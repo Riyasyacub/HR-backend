@@ -8,8 +8,8 @@ conflicts with a direct request from the user, ask before proceeding.
 | Item | Value |
 |---|---|
 | Application | Rails 8.1.4 API-only backend (`config.api_only = true`) with PostgreSQL 18.6 |
-| Frontend | Separate React repo at `../incubyte-FE` (Vite + TypeScript; Vitest + React Testing Library) |
-| Current state | Backend and frontend shells committed; no HR domain code; RSpec and Mailhog configured; JWT/Pundit gems installed |
+| Frontend | Separate React repo at `../incubyte-FE` (Vite + TypeScript; shadcn/ui + Tailwind CSS; Vitest + React Testing Library) |
+| Current state | S01 complete: JWT authentication, roles, sessions, React sign-in, protected routing, and role-aware dashboards; HR domain stories S02+ not started; RSpec and Mailhog configured |
 | Product docs | `docs/requirements.md`, `docs/product-stories.md`, `docs/test-plan.md`, `docs/README.md` |
 | Story order | S01 → S22, strictly sequential |
 | Prompt log | `prompts/prompt-log.md` |
@@ -218,6 +218,7 @@ Awaiting: approval to continue
 
 - The backend remains API-only. The frontend is the React SPA in the sibling `../incubyte-FE`
   repository (Vite + TypeScript). Do not add Rails views or a second frontend.
+- Use shadcn/ui with Tailwind CSS for the React UI; do not add another component library.
 - Routes live under `/api/v1`. Define and document the JSON contract for each story before
   implementing it. Keep responses stable.
 - Errors use `{ "error": { "code", "message", "details" } }`; lists use
@@ -255,9 +256,11 @@ Ask before doing any of the following:
 
 | Topic | Decision |
 |---|---|
-| Frontend | Separate repo `../incubyte-FE`: Vite + TypeScript; Vitest + React Testing Library; Rails stays API-only |
+| Frontend | Separate repo `../incubyte-FE`: Vite + TypeScript; shadcn/ui + Tailwind CSS; Vitest + React Testing Library; Rails stays API-only |
 | Tests | RSpec + FactoryBot + Faker; remove the Minitest `test/` directory |
 | Authentication | `jwt` gem + `has_secure_password`; Bearer access + refresh tokens; token-version revocation; 8-hour inactivity policy |
+| Token lifetimes | 15-minute access token; rotating HttpOnly refresh cookie; 8-hour inactivity window (1 minute in tests) |
+| S01 frontend | Sign-in, session restore, protected dashboard route, role-aware landing, logout, and HR-only settings access |
 | Authorisation | Pundit policies with scoped queries |
 | API | `/api/v1`; error envelope; offset pagination; CORS `http://localhost:5173` in development |
 | Email | Mailhog on localhost (SMTP 1025, UI 8025) |
@@ -265,12 +268,10 @@ Ask before doing any of the following:
 | Commits | One per accepted story in both repos, after story sign-off |
 | Input fixtures | Provided at S06 (employee Excel) and S16 (attendance CSV) |
 
-**Still to confirm in the S01 plan**
+**Still to confirm**
 
-1. **JWT token lifetimes:** short-lived access token (about 15 minutes), rotating refresh token, and
-   the 8-hour inactivity window.
-2. **Frontend scope per story:** which screens are in the demo for each story, since the stories
-   describe product behaviour rather than UI detail.
+- **Frontend scope per story:** which screens are in the demo for each remaining story, since the
+  stories describe product behaviour rather than UI detail.
 
 ## 9. Definition of done
 

@@ -30,7 +30,7 @@ behaviour created by earlier stories; skipping ahead invalidates the test data.
 |---|---|
 | Application | Rails 8.1.4 API backend + React SPA, local development |
 | Frontend repo | `../incubyte-FE` (separate git repository) |
-| Frontend tooling | Vite + React + TypeScript; Vitest + React Testing Library |
+| Frontend tooling | Vite + React + TypeScript; shadcn/ui + Tailwind CSS; Vitest + React Testing Library |
 | Database | PostgreSQL 18.6 on `localhost:5432` |
 | Email | Local SMTP via Mailhog (SMTP `localhost:1025`, UI `http://localhost:8025`) |
 | Browser | Chrome (current), one mobile viewport for S05/S14/S15 |

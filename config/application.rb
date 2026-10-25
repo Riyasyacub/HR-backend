@@ -33,5 +33,10 @@ module Incubyte
     # Middleware like session, flash, cookies can be added back manually.
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
+
+    config.middleware.use ActionDispatch::Cookies
+
+    config.x.session_inactivity_window = 8.hours
+    config.x.access_token_lifetime = 15.minutes
   end
 end

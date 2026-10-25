@@ -43,6 +43,9 @@ RSpec.configure do |config|
   # Include FactoryBot methods (build, create, attributes_for) in examples.
   config.include FactoryBot::Syntax::Methods
 
+  # Provide travel/travel_to for time-dependent examples.
+  config.include ActiveSupport::Testing::TimeHelpers
+
   # If you're not using ActiveRecord, or you'd prefer not to run each of your
   # examples within a transaction, remove the following line or assign false
   # instead of true.

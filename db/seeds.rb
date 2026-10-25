@@ -1,9 +1,19 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
-#
-# Example:
-#
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
+standard_employee = Role.find_or_create_by!(name: Role::STANDARD_EMPLOYEE)
+hr = Role.find_or_create_by!(name: Role::HR)
+
+demo_accounts = {
+  "hr@demo.test" => [ "HR Admin", "India", hr ],
+  "meera@demo.test" => [ "Meera Nair", "India", standard_employee ],
+  "arjun@demo.test" => [ "Arjun Rao", "India", standard_employee ],
+  "priya@demo.test" => [ "Priya Sharma", "India", standard_employee ],
+  "robert@demo.test" => [ "Robert Miller", "USA", standard_employee ],
+  "john@demo.test" => [ "John Davis", "USA", standard_employee ],
+  "carol@demo.test" => [ "Carol Smith", "Canada", standard_employee ],
+  "emily@demo.test" => [ "Emily Brown", "Canada", standard_employee ]
+}
+
+demo_accounts.each do |email, (name, country, role)|
+  User.find_or_initialize_by(email:).update!(
+    name:, country:, role:, password: "Demo@1234", active: true
+  )
+end

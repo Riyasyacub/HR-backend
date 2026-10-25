@@ -172,8 +172,221 @@ baseline commit, including RSpec/FactoryBot/Faker, JWT/Pundit/bcrypt/rack-cors, 
 CORS, the removed Minitest directory, and the updated agent instructions and docs. The
 frontend repository was already clean.
 
+### Start S01
+
+> start S01
+
+Notes: Reading the S01 story and preparing the first backend/frontend chunk plan; no code
+written yet.
+
+### Confirm S01 design choices
+
+> Account model: user table for all employees (HR is also an employee), separate roles table for defining the roles (standard_employee, HR). Candidates will be a separate table.
+> Session: Access JWT + refresh cookie (Recommended).
+> Frontend: Router + Context (Recommended).
+> Bootstrap: All eight accounts (Recommended).
+
+Notes: Starting S01-1 with a roles table and a users table for every employee, including HR.
+Seeding all eight demo accounts as users with names and countries; hierarchy, compensation,
+and bank details stay with S03–S05. No code written yet.
+
+Completed S01-1: added `roles` (`standard_employee`, `HR`) and `users` (role, name, email,
+password digest, country, status, active, token version). Added `Role`/`User` models with
+hashed passwords, normalised unique email, country/status/role validations, and idempotent
+seeds for the eight demo accounts. Added model and seed specs; full suite passes (10 examples)
+and RuboCop is clean. Development seed creates 8 users and 2 roles.
+
+### Use shadcn/ui for frontend components
+
+> one i missed, use shadcn for component library for FE, note it down
+
+Notes: Recorded shadcn/ui with Tailwind CSS as the frontend component library in
+`AGENTS.md`, `docs/test-plan.md`, and the frontend `AGENTS.md`/`README.md`. No packages
+installed yet; setup belongs to the first S01 frontend chunk.
+
+### Start S01-2
+
+> start the next chunk
+
+Notes: Starting the backend server-side session foundation: refresh-token hashing,
+rotation, revocation, and the 8-hour inactivity window (1 minute in tests). No code
+written yet.
+
+Completed S01-2: added `user_sessions` with a SHA-256 refresh-token digest, `last_used_at`,
+and `revoked_at`; added `UserSession.start_for`, `find_by_token`, lock-protected
+`rotate!`, `active?`, `record_activity!`, and `revoke!`; added the 8-hour/1-minute
+inactivity configuration; added the `User` association and time-helper support. New
+specs pass (5 examples); full suite passes (15 examples); RuboCop is clean.
+
+### Start S01-3
+
+> proceed to the next chunk
+
+Notes: Starting the signed access-token service: HS256, issuer/audience validation,
+15-minute expiry, role, token version, and session id claims. No code written yet.
+
+Completed S01-3: added `AccessToken` with HS256 signing, issuer/audience/expiry
+verification, access-token type marker, role, token-version, and session-id claims;
+added the 15-minute lifetime configuration. Added issue, expiry, tampering, wrong-issuer,
+and wrong-audience specs. New specs pass (5 examples); full suite passes (20 examples);
+RuboCop is clean.
 
 
 
 
 
+
+
+### Start S01-4
+
+> proceed to next chunk
+
+Notes: Starting the sign-in API slice: credential verification, generic failure response,
+access-token issuance, and the HttpOnly refresh cookie. No code written yet.
+
+Completed S01-4: documented the S01 auth contract in `docs/api.md`; added
+`POST /api/v1/auth/sign_in`, active-account credential checks, generic failure responses,
+access-token issuance, a session-scoped HttpOnly/SameSite refresh cookie, credentialed CORS,
+and cookie middleware. Added six request specs and the middleware configuration assertion.
+New specs pass (6 examples); full suite passes (26 examples); RuboCop is clean. Production
+lines: 49 of 50.
+
+### Start S01-5
+
+> proceed to next chunk
+
+Notes: Starting refresh-token rotation and sign-out revocation. Planned production files:
+`app/controllers/api/v1/auth/sessions_controller.rb`, `app/models/user_session.rb`, and
+`config/routes.rb`. No code written yet.
+
+Completed S01-5: added `POST /api/v1/auth/refresh` and `DELETE /api/v1/auth/sign_out`;
+rotation is row-locked, bound to the presented refresh token, and refuses expired or revoked
+sessions; inactive accounts are rejected and revoked; sign-out revokes the session and clears
+the cookie idempotently. Added 10 examples (rotation race/expiry, refresh failures, sign-out)
+and changed existing lookup/rotation specs. Full suite: 36 examples, 0 failures; RuboCop
+clean. Production lines: 49 of 50.
+
+### Start S01-6
+
+> proceed to next chunk
+
+Notes: Starting access-token authentication and `GET /api/v1/me`: Bearer parsing,
+signature/claim validation, token-version and session checks, inactivity refresh, and
+deactivated-account rejection. No code written yet.
+
+Completed S01-6: added Bearer authentication to `ApplicationController` with signature,
+expiry, issuer, audience, token-type, user-active, token-version, session-owner, revocation,
+and inactivity checks; authenticated requests extend `last_used_at`; added `GET /api/v1/me`.
+Added 11 current-user specs plus a sign-out-to-`/me` integration spec. Full suite: 48
+examples, 0 failures; RuboCop clean. Production lines: 38 of 50.
+
+### Start S01-7
+
+> proceed to next chunk
+
+Notes: Starting the frontend slice. Planned scope: install Tailwind CSS/shadcn and build the
+typed auth API client (sign-in, current user, refresh, sign-out) with Vitest coverage. No
+code written yet.
+
+Completed S01-7: installed Tailwind CSS v4 and shadcn/ui (Vite plugin, alias, CSS theme,
+generated button/utils), and added the typed auth client for sign-in and current-user with
+credentialed requests, bearer headers, error envelopes, and a 204-safe response path. Added
+four Vitest specs. Frontend tests (5), typecheck, lint, and build pass; backend suite (48)
+and RuboCop pass. Production lines: 49 (`src/api/auth.ts`); generated shadcn files excluded.
+Refresh and sign-out client calls move to S01-8 with the auth context.
+
+### Start S01-8
+
+> proceed to next chunk
+
+Notes: Starting the auth state slice: add refresh/sign-out client calls and an
+`AuthProvider` holding the in-memory session with sign-in/sign-out actions. Planned
+production files: `src/api/auth.ts` and `src/auth/AuthContext.tsx`.
+
+Completed S01-8: added `refreshAccessToken` and `signOut` client calls, plus `AuthProvider`
+and `useAuth` with an in-memory session, sign-in, and sign-out. Sign-out clears local state
+even when the API call fails. Added six API-client specs and four context specs; added React
+Testing Library cleanup in `src/test/setup.ts`. Frontend tests (11), typecheck, lint, and
+build pass; backend suite (48) and RuboCop pass. Production lines: 49 of 50 (`AuthContext.tsx`
+40, `auth.ts` additions 9). Session restore and screens move to S01-9.
+
+### Start S01-9
+
+> proceed to next chunk
+
+Notes: Starting session restore: refresh the session on mount, expose an auth loading
+status, wire `AuthProvider` into the app entry point, and protect the refresh flow from
+duplicate concurrent calls (React StrictMode). Planned production files:
+`src/auth/AuthContext.tsx`, `src/api/auth.ts`, and `src/main.tsx`.
+
+Completed S01-9: added mount-time refresh with `loading` / `authenticated` /
+`unauthenticated` status, wired `AuthProvider` into `main.tsx`, and shared one in-flight
+refresh promise so StrictMode cannot rotate the refresh token twice. Added a session-restore
+context spec and a concurrent-refresh API spec. Frontend tests (13), typecheck, lint, and
+build pass; backend suite (48) and RuboCop pass. Production lines: 29 of 50
+(`AuthContext.tsx` +21, `auth.ts` +5, `main.tsx` +3). Sign-in screen and protected routes
+move to S01-10.
+
+### Start S01-10
+
+> proceed to next chunk
+
+Notes: Starting the first S01 screen: sign-in form, protected routing, and role-aware landing.
+Checking the existing routing decisions before adding any dependency. No code written yet.
+
+Completed S01-10: added the sign-in form with shadcn `Input` and `Button`, generic credential
+errors, a loading state, and role-aware HR/employee dashboard headings. The form is selected
+by auth status while URL routing is deferred to S01-11 to stay inside the 50-line gate. Added
+four App integration specs covering loading, HR landing, employee landing, and invalid
+credentials. Frontend tests (16), typecheck, lint, and build pass; backend suite (48) and
+RuboCop pass. Production lines: 49 of 50 (`App.tsx` 13, `SignInPage.tsx` 36; generated
+shadcn input excluded). Protected router and logout move to S01-11.
+
+### Start S01-11
+
+> proceed to next chunk
+
+Notes: Starting URL routing and logout: install React Router (approved Router + Context
+choice), add a protected dashboard route, redirect unauthenticated users to `/sign-in`,
+redirect authenticated users away from the sign-in page, and add the logout action.
+Planned production files: `src/main.tsx`, `src/App.tsx`, `src/pages/SignInPage.tsx`, and
+`src/pages/DashboardPage.tsx`. Settings denial remains for the next chunk.
+
+Completed S01-11: installed React Router, wrapped the app in `BrowserRouter`, added
+`/sign-in` and protected `/dashboard` routes, redirected unauthenticated dashboard visits
+to `/sign-in`, redirected authenticated users away from sign-in, and added the dashboard
+logout action. Added location-aware App specs for guard redirect, HR/employee landing,
+invalid credentials, and logout. Frontend tests (17), typecheck, lint, and build pass;
+backend suite (48) and RuboCop pass. Production lines: 47 of 50 (`App.tsx` 23,
+`DashboardPage.tsx` 13, `SignInPage.tsx` +4, `main.tsx` +7). HR settings and employee
+denial move to S01-12.
+
+### Start S01-12
+
+> proceed to next chunk
+
+Notes: Starting the role-denial slice: add an HR-only `/settings` route, redirect
+employees away from it, and verify logout plus browser back does not restore protected
+content. Planned production files: `src/App.tsx` and `src/pages/SettingsPage.tsx`.
+
+Completed S01-12: added the HR-only `/settings` route with a `RequireHr` guard, an HR
+settings placeholder, employee redirect back to `/dashboard`, and a browser-back assertion
+after logout. Added three App specs; the HR settings case was the red phase. Frontend tests
+(20), typecheck, lint, and build pass; backend suite (48) and RuboCop pass. Production
+lines: 17 of 50 (`App.tsx` +9, `SettingsPage.tsx` 8). S01 frontend slice is complete;
+story-level regression, documentation, and the two commits remain after sign-off.
+
+### Start S01 sign-off
+
+> proceed to next chunk
+
+Notes: Starting S01 story sign-off: run the regression smoke pack in both repositories,
+reconcile the S01 acceptance criteria and test table, update documentation, review the full
+diff, and prepare the two story commits. No production code is planned.
+
+Completed S01 sign-off: mapped AC-01–AC-06 to the backend request/model specs and the React
+routing/sign-in specs. Final checks: backend 48 examples, RuboCop clean, Brakeman 0 warnings;
+frontend 20 examples, typecheck, lint, and production build pass. Updated `docs/README.md`,
+the root `AGENTS.md` current state/decisions, and the frontend README. No blocking defects.
+Committing both repositories as the S01 story commit. Untracked RubyMine/RBS artifacts were
+left untouched and excluded.
