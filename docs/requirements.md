@@ -416,12 +416,12 @@ Leave types are earned, sick, casual, and unpaid. No country policies.
 | NFR-01 | Scale | Support 10,000 employee records and 100 concurrent demo users | M |
 | NFR-02 | Performance | p95 page load < 2 s; standard lists < 1 s; 10,000-row import < 10 minutes | M |
 | NFR-03 | Availability | Best-effort uptime suitable for a demo; no formal SLA | M |
-| NFR-04 | Authentication | Email and password for candidates, employees, and HR; invite flow for employees; hashed passwords; 8-hour inactivity expiry | M |
+| NFR-04 | Authentication | Email and password for candidates, employees, and HR; invite flow for employees; JWT-based sessions with hashed passwords; 8-hour inactivity expiry | M |
 | NFR-05 | Authorisation | Role checks on every endpoint, plus manager subtree scoping and candidate self-scoping | M |
 | NFR-06 | Transport security | HTTPS in deployed environments; HTTP acceptable on localhost | M |
 | NFR-07 | Audit | Change history for employee, compensation, bank, leave, payroll, and hierarchy changes; 12-month retention | M |
 | NFR-08 | Backups | Daily database backup; restore procedure documented | M |
-| NFR-09 | Email | Local SMTP only (localhost); notifications viewable in a local mail catcher | M |
+| NFR-09 | Email | Local SMTP only (localhost); notifications viewable in Mailhog | M |
 | NFR-10 | File handling | Type and size limits on uploads; files served only after access checks | M |
 | NFR-11 | Localisation | English only; store dates in ISO format and display in the company's format | M |
 | NFR-12 | Accessibility | Basic keyboard navigation and readable contrast; no formal WCAG certification | S |
@@ -437,7 +437,7 @@ Leave types are earned, sick, casual, and unpaid. No country policies.
 
 | Integration | Direction | Purpose | Priority |
 |---|---|---|---|
-| Email (local SMTP) | Outbound | Invites, approvals, candidate stage updates, payroll notifications — captured by a local mail catcher | M |
+| Email (local SMTP) | Outbound | Invites, approvals, candidate stage updates, payroll notifications — captured by Mailhog | M |
 | Time & attendance devices | Inbound CSV | Employee ID, first-in timestamp, last-out timestamp | M |
 
 No other integrations are in scope. There is no identity provider, payroll provider, calendar,
@@ -568,7 +568,7 @@ Legend: **✓** allowed · **T** team/subtree scope · **—** denied.
 
 - The sample employee Excel workbook (employee fields, CTC, and component breakup).
 - The sample attendance CSV from the actual devices.
-- Confirmation of the local SMTP setup (for example, Mailpit or letter_opener).
+- Mailhog is the local mail catcher (SMTP `localhost:1025`, UI `http://localhost:8025`).
 
 ---
 

@@ -95,6 +95,85 @@ Notes: Added `docs/product-stories.md` (22 sequentially dependent stories, 158 t
 cases) and `docs/test-plan.md` (execution order, environments, regression pack,
 traceability), plus `docs/README.md` as the documentation index.
 
+## 2026-10-25
+
+### Add repository agent rules and prompt logging
+
+> Generate an agents.md file for this repository, which should contain the basic logging
+> of every prompt and several sets of development rules as follows:
+> 1. Every implementation should follow the TDD approach using Rspec.
+> 2. Every implementation should be split up into 50-line code chunks that I will review
+> after every 50 lines. Once I review it, it should go on to the next 50-line chunk.
+> 3. self-descriptive code with minimal comments; enterprise best practices (DRY, N+1
+> awareness, heavy concurrency and race conditions); no unilateral decisions — ask
+> questions first.
+
+Notes: Added `AGENTS.md` with mandatory prompt logging, TDD/RSpec workflow, the 50-line
+review gate, engineering and testing standards, and open decisions to confirm before
+implementation.
+
+### Confirm stack and working rules
+
+> 1. We gonna use a React application for FE.
+> 2. remove
+> 3. use jwt
+> 4. pundit
+> 5. use mailhog
+> 6. exclude specs/factories, just one line descriptions of tests before writing them
+> 7. per story
+> 8. will provide at S06 and S16
+
+Notes: Recorded the stack decisions in `AGENTS.md`: React frontend, RSpec with Minitest
+`test/` removed, JWT authentication, Pundit authorisation, Mailhog, production-only
+50-line counts with one-line test descriptions, per-story commits, and fixtures at
+S06/S16. Updated the requirements and test plan to name Mailhog.
+
+### Confirm JWT, frontend, and API contract defaults
+
+> JWT approach: jwt gem + password. Frontend setup: Vite + React + TS. API contract: v1 + offset paging.
+
+Notes: Confirmed the S01 implementation defaults: `jwt` gem with `has_secure_password`,
+Bearer access/refresh tokens and token-version revocation; React app in `frontend/` with
+Vite, TypeScript, and Vitest/RTL; `/api/v1` with the agreed error envelope, offset
+pagination, and CORS for `http://localhost:5173`. Updated `AGENTS.md` accordingly.
+
+Setup chunk S00-1: added `rspec-rails`, `factory_bot_rails`, `faker`, `jwt`, `pundit`,
+`bcrypt`, and `rack-cors`; removed the Minitest `test/` directory; configured FactoryBot,
+the RSpec generators, Mailhog SMTP (`localhost:1025`), and the CORS initializer. Added two
+smoke examples; `bundle exec rspec` passes (2 examples) and `bin/rubocop` is clean.
+
+### Create separate React repository beside the backend
+
+> create a FE repo parallel to the incubyte folder named incubyte-BE for the react app, we will build the FE along with the every story
+
+Notes: Awaiting confirmation of the repository name (`incubyte-BE` versus `incubyte-FE`)
+before scaffolding; no files created yet. Clarified in the next entry.
+
+### Confirm frontend repo name and per-story commits
+
+> Repo name: incubyte-FE. Initial git commit: yes. Story commits: one per story in both repos.
+
+Notes: Created the sibling repo `../incubyte-FE` with Vite 8 + React 19 + TypeScript,
+Vitest 5 + React Testing Library, jsdom, and Oxlint. Added a `/api` proxy to Rails on
+port 3000, replaced the Vite demo with a minimal app shell, and added one smoke test.
+`npm test` passes (1 test); `npm run build`, `npm run typecheck`, and `npm run lint` pass.
+Initialized git and committed the scaffold as `18bd67d` (`chore: scaffold React frontend`).
+Updated `AGENTS.md` to treat the frontend as a sibling repo, count React production lines,
+run both test suites at each checkpoint, and commit once per story in both repos. Added a
+frontend `AGENTS.md` that points to the backend rules and lists the frontend commands
+(committed as `2f64beb`).
+
+### Commit the pending setup changes
+
+> commit now
+
+Notes: Committed all pending backend setup and documentation changes as a single pre-S01
+baseline commit, including RSpec/FactoryBot/Faker, JWT/Pundit/bcrypt/rack-cors, Mailhog,
+CORS, the removed Minitest directory, and the updated agent instructions and docs. The
+frontend repository was already clean.
+
+
+
 
 
 
