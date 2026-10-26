@@ -390,3 +390,117 @@ frontend 20 examples, typecheck, lint, and production build pass. Updated `docs/
 the root `AGENTS.md` current state/decisions, and the frontend README. No blocking defects.
 Committing both repositories as the S01 story commit. Untracked RubyMine/RBS artifacts were
 left untouched and excluded.
+
+## 2026-10-26
+
+### Start S02
+
+> start the next story
+
+Notes: Started S02. Confirmed with the user: expose department deactivation only until S03,
+add minimal audit entries now for TC-S02-04, and keep countries as an immutable code lookup.
+S02-1 adds the Country lookup, Pundit authorization foundation, and the HR-only countries
+endpoint with request/model specs. Production lines: 49 of 50. Departments, leave types,
+audit entries, and the React settings screens remain.
+
+### API version namespace in routes
+
+> in routes "api/v1/" is common namespace right?
+
+Notes: Confirmed that `/api/v1` should be expressed as a Rails `api`/`v1` namespace. The current
+routes still spell the prefix literally on each line; no code changed in this turn.
+
+### Namespace the API routes
+
+> yes do yhat
+
+Notes: Completed S02-2. Moved the routes into `namespace :api` / `namespace :v1`; all existing
+URLs and named path helpers remain valid. Added the departments table with case-insensitive
+unique name/code indexes, the Department model and Pundit policy, and HR-only list/create
+endpoints. Production lines: 50 of 50. Rename, deactivate, leave types, audit entries, and the
+React settings screens remain.
+
+### Continue S02 departments
+
+> proceed to next chunk
+
+Notes: Completed S02-3. Added HR-only rename and deactivation actions. Renames trim the name,
+reject case-insensitive duplicates, and leave the code unchanged. Deactivation keeps the row and
+sets `active: false`; no DELETE route exists. Production lines: 33. Leave types, audit entries,
+and the React settings screen remain.
+
+### Continue S02 leave types
+
+> proceed to next chunk
+
+Notes: Completed S02-4a. Added the leave_types table with a non-negative check constraint, the
+four fixed types, balance tracking rules, ordered seed data, and an HR-only list endpoint.
+Production lines: 50 of 50. Entitlement updates and audit entries remain in S02-4b.
+
+### Continue S02 entitlement updates
+
+> proceed to next chunk
+
+Notes: Completed S02-4b. Added HR-only entitlement updates with transactional audit entries,
+negative/unpaid validation, and no audit for unchanged values. The audit_entries table stores
+actor, polymorphic auditable record, action, and JSONB change set. Production lines: 33.
+The React settings screen remains.
+
+### Start S02 settings screen
+
+> proceed to next chunk
+
+Notes: Completed S02-5. Exported the existing API request helper, added the settings client and
+an HR settings countries section backed by `GET /settings/countries`. Added API and UI tests
+for the bearer token, the three country/currency pairs, and the absence of editable controls.
+Production lines: 46. Department management and leave-type editing remain.
+
+### Departments settings client
+
+> proceed to next chunk
+
+Notes: Completed S02-6 as the departments API client: list, create, rename, and deactivate calls
+with the HR bearer token, plus tests for each contract. The read-only departments list moved to
+S02-7 to keep this chunk within the 50-line limit. Production lines: 40.
+
+### Departments settings screen
+
+> proceed to next chunk
+
+Notes: Completed S02-7. The HR settings page now loads departments alongside countries, shows active
+and inactive departments, creates departments through the API, and surfaces duplicate-name errors.
+Production lines: 42. Rename and deactivate controls remain.
+
+### Department rename and deactivate controls
+
+> proceed to next chunk
+
+Notes: Completed S02-8. Departments can now be renamed inline and deactivated. Duplicate rename
+errors keep the edit form open with the entered value, and inactive rows hide both actions.
+Production lines: 44. Backend unchanged.
+
+### Leave types settings screen
+
+> proceed to next chunk
+
+Notes: Completed S02-9. Leave types now load with countries and departments. Balanced rows accept
+integer entitlement updates; blank, negative, and non-integer values are rejected before the API,
+and Unpaid is shown without an entitlement. Production lines: 43. S02 UI is complete.
+
+### S02 story sign-off
+
+> proceed to next chunk
+
+Notes: Completed S02 sign-off checks. Backend: 85 examples, 0 failures; RuboCop clean; Zeitwerk OK;
+Brakeman 0 warnings. Frontend: 37 tests, typecheck, lint, and build green. Updated the current-stage
+notes in README and AGENTS.md and removed the stale S02-in-progress API note. TC-S02-01 through
+TC-S02-06 are covered; AC-03's active-employee guard remains deferred to S03 with no delete route.
+Regression smoke pack starts at S03, so only existing S01 paths were exercised. Commit pending
+explicit approval.
+
+### Commit S02 and start S03
+
+> commit and start next story
+
+Notes: Approved to commit S02 in both repositories. After the commits, starting S03 planning by reading
+the story, requirements, and current employee/auth models.

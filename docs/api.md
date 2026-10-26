@@ -119,3 +119,141 @@ Success: `200 OK`
 Failure: `401 Unauthorized` with code `invalid_token` when the access token is missing, expired,
 invalid, revoked, belongs to an inactive account, or no longer matches the user's token version.
 Each authenticated request also extends the session's inactivity window.
+
+## S02 HR configuration
+
+Configuration endpoints require an HR access token. Employees and managers receive `403 forbidden`.
+Countries are read-only; departments support create, rename, and deactivate; leave types expose
+audited entitlement updates.
+
+### GET `/api/v1/settings/countries`
+
+Returns the fixed country reference data. Countries and their currencies are read-only; there are no
+create, update, or delete endpoints.
+
+Success: `200 OK`
+
+```json
+{
+  "data": [
+    { "name": "India", "currency": "INR" },
+    { "name": "USA", "currency": "USD" },
+    { "name": "Canada", "currency": "CAD" }
+  ],
+  "meta": { "page": 1, "per_page": 3, "total": 3 }
+}
+```
+
+Failure: `401 Unauthorized` with code `invalid_token` without a valid access token, or
+`403 Forbidden` with code `forbidden` for a non-HR user.
+
+### GET `/api/v1/settings/departments`
+
+HR only. Returns all departments ordered by name, including deactivated departments.
+
+Success: `200 OK`
+
+```json
+{
+  "data": [
+    { "id": 1, "name": "Engineering", "code": "ENG", "active": true }
+  ],
+  "meta": { "page": 1, "per_page": 1, "total": 1 }
+}
+```
+
+### POST `/api/v1/settings/departments`
+
+HR only. Creates a department. Names and codes are case-insensitively unique; names are trimmed and
+codes are uppercased.
+
+Request:
+
+```json
+{
+  "department": {
+    "name": "Engineering",
+    "code": "ENG"
+  }
+}
+```
+
+Success: `201 Created`
+
+```json
+{
+  "data": { "id": 1, "name": "Engineering", "code": "ENG", "active": true }
+}
+```
+
+Failure: `422 Unprocessable Content` with code `validation_failed` and field messages in `details`.
+
+### PATCH `/api/v1/settings/departments/:id`
+
+HR only. Renames an existing department. The code is immutable after creation.
+
+Request:
+
+```json
+{
+  "department": {
+    "name": "Product Engineering"
+  }
+}
+```
+
+Success: `200 OK` with the updated department under `data`.
+
+Failure: `422 Unprocessable Content` with code `validation_failed` for a duplicate or blank name.
+
+### PATCH `/api/v1/settings/departments/:id/deactivate`
+
+HR only. Marks the department inactive without deleting it. The department remains available to
+existing records.
+
+Success: `200 OK` with `active: false` under `data`.
+
+There is deliberately no `DELETE /api/v1/settings/departments/:id` route.
+
+### GET `/api/v1/settings/leave_types`
+
+HR only. Returns the four fixed leave types in display order. `balance_tracked` is `false` for
+Unpaid, which has no entitlement. Defaults seeded for the demo are Earned 6, Sick 6, Casual 6, and
+Unpaid `null`.
+
+Success: `200 OK`
+
+```json
+{
+  "data": [
+    { "id": 1, "name": "Earned", "default_entitlement": 6, "balance_tracked": true },
+    { "id": 2, "name": "Sick", "default_entitlement": 6, "balance_tracked": true },
+    { "id": 3, "name": "Casual", "default_entitlement": 6, "balance_tracked": true },
+    { "id": 4, "name": "Unpaid", "default_entitlement": null, "balance_tracked": false }
+  ],
+  "meta": { "page": 1, "per_page": 4, "total": 4 }
+}
+```
+
+### PATCH `/api/v1/settings/leave_types/:id`
+
+HR only. Updates the default annual entitlement for a balanced leave type. The name and balance
+tracking flag are immutable. Unpaid leave cannot receive an entitlement.
+
+Request:
+
+```json
+{
+  "leave_type": {
+    "default_entitlement": 18
+  }
+}
+```
+
+Success: `200 OK` with the updated leave type under `data`.
+
+Failure: `422 Unprocessable Content` with code `validation_failed` for a negative/non-integer value
+or for Unpaid.
+
+Each changed entitlement writes an `audit_entries` row with the HR actor and
+`{ "from": <old>, "to": <new> }`. Unchanged values write no audit entry.

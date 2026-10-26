@@ -10,9 +10,40 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_25_185651) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_105142) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "audit_entries", force: :cascade do |t|
+    t.bigint "actor_id", null: false
+    t.string "auditable_type", null: false
+    t.bigint "auditable_id", null: false
+    t.string "action", null: false
+    t.jsonb "change_set", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_id"], name: "index_audit_entries_on_actor_id"
+    t.index ["auditable_type", "auditable_id"], name: "index_audit_entries_on_auditable"
+  end
+
+  create_table "departments", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "code", null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((code)::text)", name: "index_departments_on_lower_code", unique: true
+    t.index "lower((name)::text)", name: "index_departments_on_lower_name", unique: true
+  end
+
+  create_table "leave_types", force: :cascade do |t|
+    t.string "name", null: false
+    t.integer "default_entitlement"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((name)::text)", name: "index_leave_types_on_lower_name", unique: true
+    t.check_constraint "default_entitlement IS NULL OR default_entitlement >= 0", name: "leave_types_default_entitlement_non_negative"
+  end
 
   create_table "roles", force: :cascade do |t|
     t.string "name", null: false
@@ -48,6 +79,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_25_185651) do
     t.index ["role_id"], name: "index_users_on_role_id"
   end
 
+  add_foreign_key "audit_entries", "users", column: "actor_id"
   add_foreign_key "user_sessions", "users"
   add_foreign_key "users", "roles"
 end

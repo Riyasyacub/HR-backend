@@ -9,7 +9,7 @@ conflicts with a direct request from the user, ask before proceeding.
 |---|---|
 | Application | Rails 8.1.4 API-only backend (`config.api_only = true`) with PostgreSQL 18.6 |
 | Frontend | Separate React repo at `../incubyte-FE` (Vite + TypeScript; shadcn/ui + Tailwind CSS; Vitest + React Testing Library) |
-| Current state | S01 complete: JWT authentication, roles, sessions, React sign-in, protected routing, and role-aware dashboards; HR domain stories S02+ not started; RSpec and Mailhog configured |
+| Current state | S02 complete: JWT authentication, roles, sessions, React sign-in, protected routing, role-aware dashboards, and HR settings (countries, departments, leave types); S03 next; RSpec and Mailhog configured |
 | Product docs | `docs/requirements.md`, `docs/product-stories.md`, `docs/test-plan.md`, `docs/README.md` |
 | Story order | S01 → S22, strictly sequential |
 | Prompt log | `prompts/prompt-log.md` |

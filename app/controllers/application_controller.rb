@@ -1,5 +1,8 @@
 class ApplicationController < ActionController::API
   include ActionController::Cookies
+  include Pundit::Authorization
+
+  rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
 
   private
 
@@ -32,7 +35,11 @@ class ApplicationController < ActionController::API
       message: "Invalid access token")
   end
 
-  def render_error(status:, code:, message:)
-    render json: { error: { code:, message:, details: [] } }, status:
+  def user_not_authorized
+    render_error(status: :forbidden, code: "forbidden", message: "You are not authorized to perform this action")
+  end
+
+  def render_error(status:, code:, message:, details: [])
+    render json: { error: { code:, message:, details: } }, status:
   end
 end

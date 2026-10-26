@@ -1,5 +1,5 @@
 class User < ApplicationRecord
-  COUNTRIES = %w[India USA Canada].freeze
+  COUNTRIES = Country::NAMES
   STATUSES = %w[onboarding active notice exited].freeze
 
   has_secure_password

@@ -17,3 +17,8 @@ demo_accounts.each do |email, (name, country, role)|
     name:, country:, role:, password: "Demo@1234", active: true
   )
 end
+
+LeaveType::NAMES.each do |name|
+  LeaveType.create_with(default_entitlement: LeaveType::DEFAULT_ENTITLEMENTS[name])
+    .find_or_create_by!(name:)
+end

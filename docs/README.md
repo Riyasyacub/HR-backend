@@ -22,7 +22,9 @@
 
 ## Current stage
 
-S01 is complete. Roles, demo accounts, server-side sessions, access tokens, sign-in, refresh
-rotation, sign-out, current-user authentication, the React sign-in screen, protected routing,
-role-aware dashboards, and HR-only settings access are implemented. S02 is next.
-Implementation should follow the story order in `product-stories.md`.
+S01 and S02 are complete. Roles, demo accounts, server-side sessions, access tokens, sign-in,
+refresh rotation, sign-out, current-user authentication, the React sign-in screen, protected
+routing, role-aware dashboards, and HR-only settings access are implemented. HR settings now
+expose read-only countries, department create/rename/deactivate with duplicate protection, and
+editable leave-type entitlements with audit entries. S03 is next. Implementation should follow
+the story order in `product-stories.md`.
