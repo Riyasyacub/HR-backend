@@ -504,3 +504,207 @@ explicit approval.
 
 Notes: Approved to commit S02 in both repositories. After the commits, starting S03 planning by reading
 the story, requirements, and current employee/auth models.
+
+### Start S03-1
+
+> commit and start next story
+
+Notes: Confirmed architecture: separate Employee model linked optionally to User, separate
+employee_compensation_components table, and no login creation during S03 manual entry. Starting the
+schema/model foundation; writing failing model specs first.
+
+Notes: Completed S03-1. Added employees and employee_compensation_components with currency
+derivation, unique case-insensitive employee ID/work email indexes, immutable identity fields,
+status and amount validation, user/department links, and destructive component cleanup. Targeted
+model specs: 16 examples; full backend: 101 examples, 0 failures; RuboCop clean. Production lines:
+46. Frontend unchanged.
+
+### Correct S03 compensation model
+
+> The database schema for this story seems to be wrong. An employee can have multiple salaries over the years, right? We need to track that too, right? My suggestion is that the employee has many compensations and the compensation table will have an effective date field. Maybe it will have who the manager is who approved it too. And the compensation table has many compensation breakups or compensation components, as you are naming, so those other components will have a breakup of the salary that he is going to get.
+
+Notes: This corrects the S03-1 schema, which attached CTC and components directly to Employee. Reviewing
+the requirements for compensation history and effective dating before changing the uncommitted models.
+
+Notes: Revised S03-1. Employee now stores only identity, job, country/currency, bank, and status
+fields; CTC and components were removed from Employee. The flawed employee_compensation_components
+design was discarded. S03-2 will add Compensation history (effective_date, annual_ctc, currency
+snapshot, append-only) with many CompensationComponents. No approver column now. Employee model specs:
+11 examples; full backend: 96 examples, 0 failures; RuboCop clean. Production lines: 35.
+
+### Start S03-2
+
+> proceed to next chunk
+
+Notes: Starting compensation history: Compensation with effective_date, annual_ctc, currency snapshot,
+and append-only revisions; CompensationComponent rows beneath each compensation. Initial effective
+date defaults to the employee start date. No approver column.
+
+Notes: Completed S03-2. Added append-only Compensation rows with effective_date defaulting to the
+employee start date, annual CTC, and country-derived currency snapshots, plus CompensationComponent
+rows under each revision. Employee now has many compensations and resolves the latest one effective
+on a date. Unique/check constraints cover effective dates, component names, and positive amounts.
+Targeted specs: 25 examples; full backend: 110 examples, 0 failures; RuboCop clean. Production lines:
+40. Next: employee creation service with the CTC/component mismatch warning.
+
+### Start S03-3
+
+> proceed to next chunk
+
+Notes: Completed S03-3. Added `Employees::Create` to create the employee, initial compensation, and
+components in one transaction, default the effective date to the start date, require at least one
+component, and return a non-blocking warning when component totals differ from annual CTC. Targeted
+services specs: 4 examples; full backend: 114 examples, 0 failures; RuboCop clean. Production lines:
+41. Next: HR employees API index/create with Pundit policy and documented JSON contract.
+
+### Compensation mismatch warning condition
+
+> in which condition does warning_for returns a value? how can that be possible?
+
+Notes: Explained that `warning_for` returns a string only when the persisted component total differs from
+the compensation's `annual_ctc`; the service intentionally does not enforce equality, so mismatched
+input persists with a warning. No code changed.
+
+### Annual CTC derived from components
+
+> annual_ctc shouldn't be a independent input, it should be the sum of components
+
+Notes: Raised a requirements conflict: AC-04/TC-S03-05 explicitly require allowing a component/CTC
+mismatch with a non-blocking warning. Asked for a decision before changing the contract or code.
+
+### Derive annual CTC from components (approved)
+
+> 2
+
+Notes: Chose option 2. Annual CTC is no longer accepted as an independent input. `Compensation` now
+accepts nested components and derives the persisted annual CTC from their sum; `Employees::Create`
+rejects an `annual_ctc` input, creates components through nested attributes, returns the employee,
+and no longer produces a mismatch warning. Updated S03, payroll, offer, import, and glossary
+references in `docs/product-stories.md`, `docs/requirements.md`, and `docs/test-plan.md`. Targeted
+specs: 14 examples; full backend: 115 examples, 0 failures; RuboCop clean. Production lines: 40 of 50.
+
+### Start S03-4
+
+> proceed to next chunk
+
+Notes: Completed S03-4. Added the HR-only `GET /api/v1/employees` list with employee ordering,
+department details, offset pagination (`page`, `per_page` default 25/max 100), and an
+`EmployeePolicy`. The response omits compensation and bank fields. Added the list contract to
+`docs/api.md`. The create endpoint was deferred to its own chunk to stay under 50 production lines.
+Targeted request specs: 5 examples; full backend: 120 examples, 0 failures; RuboCop clean.
+Production lines: 35 of 50. Next: POST `/api/v1/employees` with the create service, strong
+parameters, validation errors, and derived compensation response.
+
+### Start S03-5
+
+> proceed to next chunk
+
+Notes: Completed S03-5. Added HR-only `POST /api/v1/employees` with strong parameters for employee and
+component inputs, integration with `Employees::Create`, 201 responses containing the employee,
+department, and derived compensation, and 422 field-detail errors for validation failures. The
+endpoint ignores any supplied `annual_ctc` or `currency`; both are derived. Component parameters are
+converted to symbol-keyed hashes before nested creation. Added the create contract to `docs/api.md`.
+Targeted request specs: 13 examples; full backend: 128 examples, 0 failures; RuboCop clean.
+Production lines: 40 of 50. Next: employee show/profile access with HR and self scoping.
+
+### Start S03-6
+
+> proceed to next chunk
+
+Notes: Completed S03-6. Added `GET /api/v1/employees/:id` with HR access and employee self-access
+via `EmployeePolicy#show?`, returning full profile including bank details and latest compensation
+components. Added `employee_id` to session and `/me` payloads. Documented in `docs/api.md`. Targeted
+specs: 6 examples; full backend: 134 examples, 0 failures; RuboCop clean. Production lines: 24 of 50.
+Next: frontend employee API client and employee listing/navigation.
+
+
+### Repository orientation and AGENTS.md walkthrough
+
+> I have been building this using Open Code for now so read the agent.md file, which is the entry point for it. Then there are several product docs here. This is a backend repository and there is one frontend sibling to that, incubyte-frontend, which is the frontend repository. We are going to follow the product stories now. Read this and then let me know what you have understood.
+
+Notes: Read AGENTS.md, product requirements, product stories, test plan, API docs, prompt log, and the current state of both backend and frontend repositories (incubyte and incubyte-FE). Verified test suites and linting. Summarized key architecture, strict workflow protocols (TDD, 50-line chunks, gate review checkpoints), and current progress (S03-6 in-flight).
+
+
+### Start S03-7
+
+> proceed to the next chunk
+
+Notes: Completed S03-7. Added frontend API client in `../incubyte-FE/src/api/employees.ts` covering
+`listEmployees` with offset pagination, `createEmployee` with nested compensation components, and
+`getEmployee` profile fetching. Added `employee_id?: number | null` to `User` in `src/api/auth.ts`.
+Targeted Vitest specs: 3 examples; full frontend: 40 passed, typecheck and lint clean. Full backend:
+134 examples, 0 failures; RuboCop clean. Production lines: 48 of 50. Next: HR employee list and
+creation UI component/page in `../incubyte-FE`.
+
+
+### Start S03-8
+
+> proceed to the next chunk
+
+Notes: Completed S03-8. Added the HR Employees list page in `../incubyte-FE/src/pages/EmployeesPage.tsx`
+displaying employee id, linked profile navigation, email, department, and status, with error handling
+and an 'Add employee' action button. Registered `/employees` route in `../incubyte-FE/src/App.tsx`.
+Targeted Vitest specs: 2 examples in `src/pages/EmployeesPage.test.tsx`; full frontend: 42 passed,
+typecheck and lint clean. Full backend: 134 examples, 0 failures; RuboCop clean. Production lines:
+49 of 50. Next: employee creation form modal/page in `../incubyte-FE`.
+
+
+### Start S03-9
+
+> proceed to the next chunk
+
+Notes: Completed S03-9. Added `../incubyte-FE/src/components/CompensationInputs.tsx` for dynamic
+compensation components input, automatic annual CTC calculation (sum of components), and country-driven
+currency display without an independent currency selector (AC-02, AC-04). Targeted Vitest specs:
+2 examples in `CompensationInputs.test.tsx`; full frontend: 44 passed, typecheck and lint clean.
+Full backend: 134 examples, 0 failures; RuboCop clean. Production lines: 46 of 50. Next:
+`NewEmployeePage.tsx` integration with `CompensationInputs`, countries/departments loading, and submission.
+
+
+### Start S03-10
+
+> proceed to the next chunk
+
+Notes: Completed S03-10. Added `../incubyte-FE/src/hooks/useNewEmployeeForm.ts` managing employee
+creation form state, asynchronous loading of countries/departments, country-driven currency derivation,
+dynamic compensation component state, and submission via `createEmployee` with error handling.
+Targeted Vitest specs: 3 examples in `useNewEmployeeForm.test.ts`; full frontend: 47 passed,
+typecheck and lint clean. Full backend: 134 examples, 0 failures; RuboCop clean. Production lines:
+39 of 50. Next: `NewEmployeePage.tsx` using `useNewEmployeeForm` and registering `/employees/new`.
+
+
+### Start S03-11
+
+> proceed to the next chunk
+
+Notes: Completed S03-11. Added `../incubyte-FE/src/pages/NewEmployeePage.tsx` using `useNewEmployeeForm`
+and `<CompensationInputs />`, rendering personal, job, and bank fields, with validation error alerting,
+and registered the `/employees/new` route under `RequireHr` in `App.tsx`. Targeted Vitest specs:
+2 examples in `NewEmployeePage.test.tsx`; full frontend: 49 passed, typecheck and lint clean.
+Full backend: 134 examples, 0 failures; RuboCop clean. Production lines: 49 of 50.
+Next: employee profile view `EmployeeProfilePage.tsx` (AC-05).
+
+
+### Start S03-12
+
+> proceed to the next chunk
+
+Notes: Completed S03-12. Added `../incubyte-FE/src/pages/EmployeeProfilePage.tsx` displaying employee
+personal data, read-only bank details, and latest compensation breakup with components, and registered
+the `/employees/:id` route in `App.tsx` (AC-05, TC-S03-06, TC-S03-07). Targeted Vitest specs: 2 examples
+in `EmployeeProfilePage.test.tsx`; full frontend: 51 passed, typecheck and lint clean. Full backend:
+134 examples, 0 failures; RuboCop clean. Production lines: 49 of 50. Story S03 feature complete.
+
+
+### S03 story completion and sign-off check
+
+> proceed to the next chunk
+
+Notes: Story S03 (Create and manage employee records) is completely delivered across all chunks (S03-1 through S03-12). All acceptance criteria (AC-01 through AC-06) and test cases (TC-S03-01 through TC-S03-07) are covered and verified. Both suites pass (134 backend examples, 51 frontend tests), RuboCop and typecheck/lint are clean. Updated `docs/README.md`. Awaiting story sign-off and approval to commit S03 in both repositories before starting S04.
+
+
+### Commit S03 and start S04
+
+> commit and start the next story
+
+Notes: Committed Story S03 in both repositories (`incubyte` and `../incubyte-FE`). Starting S04 planning for reporting hierarchy and manager scope.

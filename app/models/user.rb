@@ -6,6 +6,7 @@ class User < ApplicationRecord
 
   belongs_to :role
   has_many :user_sessions, dependent: :destroy
+  has_one :employee, dependent: :nullify
 
   normalizes :email, with: ->(email) { email.strip.downcase }
 

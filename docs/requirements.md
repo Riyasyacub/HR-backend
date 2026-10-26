@@ -31,7 +31,7 @@ payroll, benefits, or identity platform.
 | Approvals | Leave follows the **reporting hierarchy**; managers do not approve profile changes |
 | Countries | India, USA, and Canada only, as plain data; **no country-specific policies or tax** |
 | Currency | Determined by the employee's country: India → INR, USA → USD, Canada → CAD |
-| Compensation | **Annual CTC** stored with the **component breakup supplied in the HR Excel** |
+| Compensation | **Component breakup supplied in the HR Excel**; **annual CTC** is the sum of the components |
 | Payroll | Monthly Excel payout list; unpaid leave **automatically reduces** pay; no tax or deductions |
 | Verification | None; data from Excel and forms is accepted as entered |
 | Attendance | CSV with employee ID, first-in timestamp, and last-out timestamp |
@@ -132,7 +132,7 @@ payroll, benefits, or identity platform.
 | Employee | A hired person: personal details, contact, country, department, manager, compensation, bank details, status, and an optional `candidate_id` reference |
 | Reporting line | The manager relationship; hierarchy can be nested to any depth |
 | Employee status | `onboarding`, `active`, `notice`, `exited` |
-| Compensation | Annual CTC plus a component breakup (component name and annual amount), supplied by HR |
+| Compensation | A component breakup (component name and annual amount) supplied by HR; annual CTC is the sum |
 | Leave type | Global type: earned, sick, casual, or unpaid (unpaid has no balance) |
 | Leave balance | Per-employee entitlement, adjustments, and used days per year for earned, sick, and casual |
 | Leave request | A dated request with type, reason, status, and approval trail |
@@ -152,7 +152,7 @@ payroll, benefits, or identity platform.
 - **DR-07** Only minimal structural validation is applied: required fields, valid email format, numeric amounts, valid date ranges, and duplicate employee ID/work email rejection.
 - **DR-08** Amounts are stored in the currency derived from the employee's country. No currency conversion is performed.
 - **DR-09** An employee record created from a hire references the originating candidate record; neither record is deleted.
-- **DR-10** Compensation is stored as annual CTC plus annual component amounts. Component names are supplied by HR.
+- **DR-10** Compensation is stored as annual component amounts; annual CTC is derived from their sum. Component names are supplied by HR.
 
 ---
 
@@ -185,13 +185,13 @@ Priority: **M** = must (demo), **S** = should, **C** = could.
 
 | ID | Requirement | Priority | Acceptance criteria (summary) |
 |---|---|---|---|
-| EMP-01 | Create an employee from an Excel import, a hired candidate, or manual entry | M | Record has employee ID, name, email, country, department, manager, annual CTC, components, bank details, and start date |
+| EMP-01 | Create an employee from an Excel import, a hired candidate, or manual entry | M | Record has employee ID, name, email, country, department, manager, components, derived annual CTC, bank details, and start date |
 | EMP-02 | Excel import with a downloadable template, a preview, and a row-level error report | M | Valid rows are imported; invalid rows are listed with reasons and can be corrected and re-uploaded |
 | EMP-03 | Assign or change the direct manager | M | Change is recorded with effective date and actor; hierarchy updates everywhere |
 | EMP-04 | Reject hierarchy cycles | M | Selecting a subordinate (directly or indirectly) as manager is blocked |
 | EMP-05 | Employee profile: personal details, contact, address, country, department, job title, start date, status | M | Employee can view their own record; HR can edit all fields |
 | EMP-06 | Employee self-service for contact details and address | M | Changes save immediately; work email and employee ID are read-only |
-| EMP-07 | HR-managed compensation: annual CTC and component breakup | M | Monthly gross is derived from annual components; employees see their own values read-only; managers cannot |
+| EMP-07 | HR-managed compensation: component breakup and derived annual CTC | M | Annual CTC is the sum of annual components; monthly gross is derived from the components; employees see their own values read-only; managers cannot |
 | EMP-08 | HR-managed bank details: bank name, IFSC, and account number | M | Employee sees their own values read-only; changes are audit-logged |
 | EMP-09 | Country transfer with effective date | M | Country and currency update from the effective date; previous values remain in history |
 | EMP-10 | Employee status lifecycle: onboarding, active, notice, exited | M | Status changes trigger the related checklist and access rules |
@@ -219,7 +219,7 @@ Priority: **M** = must (demo), **S** = should, **C** = could.
 | ONB-01 | Start onboarding from a hired candidate or manually for an off-system hire | M | Employee record is pre-filled from candidate and offer data with no re-keying |
 | ONB-02 | Onboarding checklist with owners and due dates | M | Tasks are created automatically and show as pending on the employee and HR views |
 | ONB-03 | Collect documents: contract, ID, and policy acknowledgement | M | Documents attach to the employee record; incomplete documents are visible as pending |
-| ONB-04 | HR records bank details, annual CTC, and components before the first payroll run | M | Employee cannot move to `active` without the fields required by the payroll export |
+| ONB-04 | HR records bank details and components before the first payroll run | M | Employee cannot move to `active` without the fields required by the payroll export; annual CTC is derived from the components |
 | ONB-05 | Create the employee's internal app account and send an invite email | M | Employee can log in after accepting the invite; account is inactive before the start date |
 | ONB-06 | Manager tasks: team introduction, equipment request, first-week plan | M | Manager sees assigned tasks and completion state |
 | ONB-07 | Email notifications and reminders for overdue tasks | M | Reminder emails are sent at configured intervals; completion stops reminders |
@@ -266,7 +266,7 @@ Calculation is limited to monthly gross minus unpaid leave, plus manual adjustme
 | ID | Requirement | Priority | Acceptance criteria (summary) |
 |---|---|---|---|
 | PAY-01 | Create a monthly payroll run for a selected month | M | Run includes all `active` employees and excludes employees who exited before the month |
-| PAY-02 | Store annual CTC and components; derive monthly gross | M | Monthly gross equals the sum of annual components divided by 12, rounded to two decimals |
+| PAY-02 | Store components; derive annual CTC and monthly gross | M | Annual CTC equals the sum of annual components; monthly gross equals that sum divided by 12, rounded to two decimals |
 | PAY-03 | Add one-off adjustments (bonus, deduction, leave payout, correction) | M | Adjustment is visible in the run and audit-logged |
 | PAY-04 | Automatically deduct unpaid leave taken in the payroll month | M | Deduction = (monthly gross ÷ working days in month) × unpaid leave days; shown as a separate line |
 | PAY-05 | Review the payroll run before export | M | Review shows employee, country, currency, monthly gross, unpaid leave deduction, adjustments, total, and bank details |
@@ -280,13 +280,13 @@ Calculation is limited to monthly gross minus unpaid leave, plus manual adjustme
 **Business rules**
 
 - BR-PAY-01 Only HR can create, edit, or export a payroll run.
-- BR-PAY-02 Monthly gross = sum of annual components ÷ 12. Every employee must have an annual CTC and at least one component.
+- BR-PAY-02 Annual CTC = sum of annual components. Monthly gross = that sum ÷ 12. Every employee must have at least one component.
 - BR-PAY-03 Unpaid leave is deducted automatically using actual Monday-to-Friday working days in the month.
 - BR-PAY-04 Paid leave (earned, sick, casual) does not affect pay.
 - BR-PAY-05 Currency follows the employee's country; totals are grouped by currency and never converted.
 - BR-PAY-06 A generated run cannot be edited; a new run or adjustment is required.
 - BR-PAY-07 Mid-month joins and exits are paid a full month by default; HR adds an adjustment when a pro-rata amount is needed.
-- BR-PAY-08 The sum of the components should equal the annual CTC; a mismatch is shown as a warning that HR must resolve before export.
+- BR-PAY-08 Annual CTC is calculated from the sum of components; there is no independent CTC value to mismatch.
 
 **Payroll Excel columns:** Employee ID, Employee Name, Country, Currency, Bank Name, IFSC,
 Account Number, Monthly Gross, Unpaid Leave Deduction, Adjustments, Total Amount, Pay Period, Notes.
@@ -392,7 +392,7 @@ Leave types are earned, sick, casual, and unpaid. No country policies.
 | REC-05 | Candidate pipeline with fixed stages: Applied, Screening, Interview, Offer, Hired, Rejected | M | HR can move an application between stages; every move is timestamped |
 | REC-06 | HR candidate view with application data, CV, notes, and stage history | M | HR can add internal notes; notes are never visible to the candidate |
 | REC-07 | Record interview date and interviewer; notify the candidate by email | M | Candidate receives interview details by email; no calendar integration |
-| REC-08 | Record offer details: annual CTC, components, start date, country, manager, department | M | Offer stage requires CTC and start date; currency follows the country |
+| REC-08 | Record offer details: components, start date, country, manager, department | M | Offer stage requires at least one component and start date; annual CTC is the component sum; currency follows the country |
 | REC-09 | Convert a hired candidate into an employee record | M | Employee is pre-filled from the candidate and offer, stores the candidate reference, and starts onboarding |
 | REC-10 | Stage-change and rejection emails using editable templates | M | Emails are sent on configured stage changes |
 | REC-11 | Job opening and pipeline dashboard | S | Counts reconcile with applications and openings |
@@ -450,7 +450,7 @@ e-signature, job board, background-check, finance, or messaging integration.
 | Function | Details |
 |---|---|
 | Employee import template | Employee ID, first name, last name, work email, personal email, phone, country, department, job title, manager employee ID, start date, status |
-| Compensation sheet | Employee ID, annual CTC, component name, component annual amount (one row per component); provided by HR in the same workbook |
+| Compensation sheet | Employee ID, component name, component annual amount (one row per component); annual CTC is derived from the sum; provided by HR in the same workbook |
 | Bank details | Columns in the employee sheet: bank name, IFSC, account number |
 | Import behaviour | Download template, upload, preview, validate structure and required fields, import valid rows, report failed rows with row number and reason |
 | Duplicate handling | Duplicate employee ID or work email is rejected per row; valid rows still import |
@@ -528,8 +528,8 @@ Legend: **✓** allowed · **T** team/subtree scope · **—** denied.
 - The demo is single-tenant and used by one company; no customer provisioning is required.
 - Countries are India, USA, and Canada; country determines currency and nothing else.
 - Candidates have accounts and records; employee records created on hire retain a candidate reference.
-- Salary is represented as annual CTC plus component breakup supplied by HR; there are no employer
-  contributions, benefits, or tax.
+- Salary is represented as a component breakup supplied by HR; annual CTC is the sum of the
+  components. There are no employer contributions, benefits, or tax.
 - Monthly gross is the sum of annual components divided by 12. No other calculation is performed.
 - Unpaid leave automatically reduces pay; paid leave does not.
 - Leave types are earned, sick, and casual with annual balances resetting on 1 January, no carryover;
@@ -553,7 +553,7 @@ Legend: **✓** allowed · **T** team/subtree scope · **—** denied.
 | 2 | Countries | India, USA, Canada |
 | 3 | Leave types | Earned, sick, casual (plus unpaid, balance-free) |
 | 4 | Balance reset | Reset yearly on 1 January, no carryover |
-| 5 | Compensation | Annual CTC with component breakup imported from the HR Excel |
+| 5 | Compensation | Component breakup imported from the HR Excel; annual CTC is the sum |
 | 6 | Unpaid leave and pay | Unpaid leave automatically reduces monthly pay |
 | 7 | Bank fields | Bank name, IFSC, account number |
 | 8 | Attendance CSV | Employee ID, first-in timestamp, last-out timestamp; sample at implementation |
@@ -578,7 +578,7 @@ Legend: **✓** allowed · **T** team/subtree scope · **—** denied.
 |---|---|
 | Direct manager | The employee's immediate approver in the reporting hierarchy |
 | Reporting subtree | All employees below a manager, directly and indirectly |
-| CTC | Annual cost to company; stored as a total plus component amounts |
+| CTC | Annual cost to company; the sum of the annual component amounts |
 | Component | A named part of CTC (for example, basic or allowance) with an annual amount |
 | Monthly gross | The sum of annual components divided by 12 |
 | Onboarding | The checklist and data collection between hire and `active` status |

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_105142) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_122857) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -26,6 +26,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_105142) do
     t.index ["auditable_type", "auditable_id"], name: "index_audit_entries_on_auditable"
   end
 
+  create_table "compensation_components", force: :cascade do |t|
+    t.bigint "compensation_id", null: false
+    t.string "name", null: false
+    t.decimal "annual_amount", precision: 12, scale: 2, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "compensation_id, lower((name)::text)", name: "index_compensation_components_on_compensation_and_name", unique: true
+    t.index ["compensation_id"], name: "index_compensation_components_on_compensation_id"
+    t.check_constraint "annual_amount > 0::numeric", name: "compensation_components_annual_amount_positive"
+  end
+
+  create_table "compensations", force: :cascade do |t|
+    t.bigint "employee_id", null: false
+    t.date "effective_date", null: false
+    t.decimal "annual_ctc", precision: 12, scale: 2, null: false
+    t.string "currency", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id", "effective_date"], name: "index_compensations_on_employee_id_and_effective_date", unique: true
+    t.index ["employee_id"], name: "index_compensations_on_employee_id"
+    t.check_constraint "annual_ctc > 0::numeric", name: "compensations_annual_ctc_positive"
+  end
+
   create_table "departments", force: :cascade do |t|
     t.string "name", null: false
     t.string "code", null: false
@@ -34,6 +57,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_105142) do
     t.datetime "updated_at", null: false
     t.index "lower((code)::text)", name: "index_departments_on_lower_code", unique: true
     t.index "lower((name)::text)", name: "index_departments_on_lower_name", unique: true
+  end
+
+  create_table "employees", force: :cascade do |t|
+    t.bigint "user_id"
+    t.bigint "department_id", null: false
+    t.string "employee_id", null: false
+    t.string "first_name", null: false
+    t.string "last_name", null: false
+    t.string "work_email", null: false
+    t.string "country", null: false
+    t.string "currency", null: false
+    t.string "job_title", null: false
+    t.date "start_date", null: false
+    t.string "bank_name", null: false
+    t.string "ifsc"
+    t.string "account_number", null: false
+    t.string "status", default: "onboarding", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "lower((employee_id)::text)", name: "index_employees_on_lower_employee_id", unique: true
+    t.index "lower((work_email)::text)", name: "index_employees_on_lower_work_email", unique: true
+    t.index ["department_id"], name: "index_employees_on_department_id"
+    t.index ["user_id"], name: "index_employees_on_user_id", unique: true
   end
 
   create_table "leave_types", force: :cascade do |t|
@@ -80,6 +126,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_105142) do
   end
 
   add_foreign_key "audit_entries", "users", column: "actor_id"
+  add_foreign_key "compensation_components", "compensations"
+  add_foreign_key "compensations", "employees"
+  add_foreign_key "employees", "departments"
+  add_foreign_key "employees", "users"
   add_foreign_key "user_sessions", "users"
   add_foreign_key "users", "roles"
 end

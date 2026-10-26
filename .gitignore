@@ -34,3 +34,6 @@
 # Ignore editor and IDE settings.
 /.idea/
 
+/.gem_rbs_collection/
+/install.cmd
+/C:*

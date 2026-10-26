@@ -14,6 +14,7 @@ Rails.application.routes.draw do
       end
 
       get "me", to: "me#show"
+      resources :employees, only: %i[index create show]
       namespace :settings do
         resources :countries, only: :index
         resources :leave_types, only: %i[index update]

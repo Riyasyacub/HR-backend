@@ -22,9 +22,7 @@
 
 ## Current stage
 
-S01 and S02 are complete. Roles, demo accounts, server-side sessions, access tokens, sign-in,
-refresh rotation, sign-out, current-user authentication, the React sign-in screen, protected
-routing, role-aware dashboards, and HR-only settings access are implemented. HR settings now
-expose read-only countries, department create/rename/deactivate with duplicate protection, and
-editable leave-type entitlements with audit entries. S03 is next. Implementation should follow
-the story order in `product-stories.md`.
+S01, S02, and S03 are complete. S03 delivers authoritative employee records:
+- Backend: `Employee`, append-only `Compensation` and `CompensationComponent` models, annual CTC derived from component sums, `Employees::Create` service, HR-only list and create endpoints, and HR/self profile show endpoint with `EmployeePolicy`.
+- Frontend: `employees` API client, `CompensationInputs` with dynamic components and auto-calculated annual CTC, `useNewEmployeeForm` hook, `EmployeesPage` list, `NewEmployeePage` creation form, and `EmployeeProfilePage` read-only bank/compensation view.
+All 134 backend specs and 51 frontend tests pass. S04 (Reporting hierarchy and manager scope) is next. Implementation follows the story order in `product-stories.md`.

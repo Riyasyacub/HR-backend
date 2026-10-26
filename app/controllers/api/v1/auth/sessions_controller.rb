@@ -68,7 +68,7 @@ class Api::V1::Auth::SessionsController < ApplicationController
       token_type: "Bearer",
       expires_in: Rails.configuration.x.access_token_lifetime.to_i,
       user: user.as_json(only: %i[id name email country])
-        .merge("role" => user.role.name)
+        .merge("role" => user.role.name, "employee_id" => user.employee&.id)
     }
   end
 end

@@ -161,10 +161,10 @@ As an HR user, I want to create an employee with personal, job, compensation, an
 that the employee has one authoritative record.
 
 **Feature**
-- Manual employee creation with required fields: employee ID, first/last name, work email, country, department, job title, start date, annual CTC, at least one component, bank name, account number, status.
+- Manual employee creation with required fields: employee ID, first/last name, work email, country, department, job title, start date, at least one compensation component, bank name, account number, status.
 - Country drives currency automatically.
 - Unique employee ID and work email.
-- CTC component warning when components do not sum to CTC.
+- Annual CTC is derived from the sum of the compensation components and is not entered independently.
 - Employee-level access to their own record; HR-only editing of compensation and bank data.
 
 **Acceptance criteria**
@@ -172,7 +172,7 @@ that the employee has one authoritative record.
 - **AC-01** An employee can be created with all required fields and appears in the employee list.
 - **AC-02** Currency is set automatically from country and cannot be edited independently.
 - **AC-03** Duplicate employee ID or work email is rejected with a field-level error.
-- **AC-04** Annual CTC and components are stored; a mismatch shows a non-blocking warning.
+- **AC-04** Annual CTC is calculated from the sum of the stored compensation components and cannot be supplied as an independent value.
 - **AC-05** The employee can view their own profile, including CTC and bank details, but cannot edit them.
 - **AC-06** An employee has a status of `onboarding` or `active` and a start date.
 
@@ -180,11 +180,11 @@ that the employee has one authoritative record.
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S03-01 | H | Signed in as HR; Engineering and India exist | Create employee EMP101, Ravi Kumar, `ravi@demo.test`, India, annual CTC 1,200,000, component Basic 1,200,000 | Employee is saved; currency is INR; list shows Ravi |
+| TC-S03-01 | H | Signed in as HR; Engineering and India exist | Create employee EMP101, Ravi Kumar, `ravi@demo.test`, India, with components Basic 1,000,000 and Allowance 200,000 | Employee is saved; annual CTC is 1,200,000; currency is INR; list shows Ravi |
 | TC-S03-02 | H | Signed in as HR | Create a Canadian employee | Currency is CAD automatically; no currency selector is shown |
 | TC-S03-03 | N | Employee EMP101 exists | Create another employee with ID EMP101 | Validation error on employee ID; nothing is saved |
 | TC-S03-04 | N | Employee `ravi@demo.test` exists | Create an employee with the same work email | Validation error on email |
-| TC-S03-05 | E | Signed in as HR | Enter CTC 1,200,000 with components totalling 1,000,000 | Record saves with a visible warning about the component mismatch |
+| TC-S03-05 | E | Signed in as HR | Enter components Basic 1,000,000.50 and Allowance 199,999.50 | Annual CTC is derived as 1,200,000.00; no separate CTC field is accepted |
 | TC-S03-06 | P | Signed in as Priya | Open her own profile, then attempt to edit CTC | CTC and bank fields are read-only; contact fields (if editable) save |
 | TC-S03-07 | P | Signed in as Priya | Open another employee's profile URL | Access denied |
 
@@ -460,7 +460,7 @@ issue offers, so that hiring is tracked and communicated consistently.
 - Stage changes timestamped and listed in history.
 - Internal notes visible to HR only.
 - Interview date and interviewer recorded; candidate gets an email.
-- Offer details: annual CTC, components, start date, country, manager, department; currency from country.
+- Offer details: components, start date, country, manager, department; annual CTC is the component sum; currency from country.
 - Stage-change and rejection emails using editable templates.
 
 **Acceptance criteria**
@@ -468,7 +468,7 @@ issue offers, so that hiring is tracked and communicated consistently.
 - **AC-01** HR can advance or reject an application, and every transition is timestamped.
 - **AC-02** Candidate sees the current stage but never internal notes.
 - **AC-03** Recording an interview sends the candidate an email to the local mail catcher.
-- **AC-04** Moving to Offer requires annual CTC and start date; currency follows the opening/offer country.
+- **AC-04** Moving to Offer requires at least one component and start date; annual CTC is their sum and currency follows the opening/offer country.
 - **AC-05** Rejecting sends a rejection email and stops further stage changes.
 - **AC-06** Offer records can only be created by HR.
 
@@ -817,7 +817,7 @@ adjustments, so that the payout amounts are complete and validated before export
 - Monthly gross = sum of annual components ÷ 12.
 - Automatic unpaid-leave deduction using working days in the month.
 - Manual adjustments with descriptions.
-- Blocking validation for missing bank name, account number, CTC, or components; warning for CTC/component mismatch.
+- Blocking validation for missing bank name, account number, or components; annual CTC is derived from the component sum.
 - Review totals by employee, country, currency; no tax or other deductions.
 
 **Acceptance criteria**
@@ -826,7 +826,7 @@ adjustments, so that the payout amounts are complete and validated before export
 - **AC-02** Monthly gross equals the sum of components divided by 12, rounded to two decimals.
 - **AC-03** Unpaid leave days in the month produce the deduction `(monthly gross ÷ working days) × unpaid days`.
 - **AC-04** Adjustments are added or subtracted with a description and appear in the total.
-- **AC-05** Export-blocking data issues are listed and prevent approval; CTC mismatch is a warning.
+- **AC-05** Export-blocking data issues are listed and prevent approval.
 - **AC-06** The run cannot be created or edited by non-HR users.
 - **AC-07** No tax, statutory deduction, benefit, or payslip value is calculated.
 

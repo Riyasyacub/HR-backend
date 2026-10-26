@@ -66,7 +66,7 @@ Run in this order. The "gate" column is the minimum that must pass before moving
 |---|---|---|---|
 | S01 | Sign-in and role access | Auth, role routing, session expiry | All S01 cases green |
 | S02 | HR configuration | Countries/currencies, departments, leave types | Settings usable by S03 |
-| S03 | Employee records | Create, validate, CTC/components, bank | Priya/EMP101 and Canadian/US employees exist |
+| S03 | Employee records | Create, validate, components with derived CTC, bank | Priya/EMP101 and Canadian/US employees exist |
 | S04 | Hierarchy | Manager assignment, cycles, scope | Subtree rules verified |
 | S05 | Self-service, directory, audit | Field-level edits, filters, history | Audit entries visible |
 | S06 | Excel import | Template, errors, two-pass managers, compensation | Sample file imports cleanly |

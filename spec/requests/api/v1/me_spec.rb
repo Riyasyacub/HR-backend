@@ -31,10 +31,21 @@ RSpec.describe "Current user", type: :request do
           "name" => user.name,
           "email" => user.email,
           "country" => user.country,
-          "role" => Role::HR
+          "role" => Role::HR,
+          "employee_id" => nil
         }
       }
     )
+  end
+
+  it "returns the linked employee id" do
+    employee_user = create(:user, email: "priya@demo.test")
+    employee = create(:employee, user: employee_user)
+
+    get "/api/v1/me", headers: authentication_headers(employee_user)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig("data", "user", "employee_id")).to eq(employee.id)
   end
 
   it "returns the employee role" do

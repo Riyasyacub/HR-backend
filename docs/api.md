@@ -31,12 +31,14 @@ Base path: `/api/v1`. Requests and responses are JSON.
   "name": "HR Admin",
   "email": "hr@demo.test",
   "role": "HR",
-  "country": "India"
+  "country": "India",
+  "employee_id": 1
 }
 ```
 
 `role` is `HR` or `standard_employee`. Managers are derived from the reporting hierarchy, not stored
-as a role.
+as a role. `employee_id` is the linked employee record id, or `null` when the user has no employee
+record.
 
 ## S01 authentication
 
@@ -66,7 +68,8 @@ Success: `200 OK`
       "name": "HR Admin",
       "email": "hr@demo.test",
       "role": "HR",
-      "country": "India"
+      "country": "India",
+      "employee_id": null
     }
   }
 }
@@ -110,7 +113,8 @@ Success: `200 OK`
       "name": "HR Admin",
       "email": "hr@demo.test",
       "role": "HR",
-      "country": "India"
+      "country": "India",
+      "employee_id": null
     }
   }
 }
@@ -257,3 +261,157 @@ or for Unpaid.
 
 Each changed entitlement writes an `audit_entries` row with the HR actor and
 `{ "from": <old>, "to": <new> }`. Unchanged values write no audit entry.
+
+## S03 Employee records
+
+Employee list and create access is HR only. Profile access is available to HR and to the linked
+employee. The list omits compensation and bank details; compensation is returned by the create
+response. Monetary values are decimal strings with two places.
+
+### GET `/api/v1/employees`
+
+HR only. Returns employees ordered by `employee_id`. Results are offset-paginated with `page`
+(default 1) and `per_page` (default 25, maximum 100).
+
+Success: `200 OK`
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "employee_id": "EMP101",
+      "first_name": "Ravi",
+      "last_name": "Kumar",
+      "work_email": "ravi@demo.test",
+      "country": "India",
+      "currency": "INR",
+      "job_title": "Software Engineer",
+      "start_date": "2026-01-01",
+      "status": "active",
+      "department": { "id": 1, "name": "Engineering" }
+    }
+  ],
+  "meta": { "page": 1, "per_page": 25, "total": 1 }
+}
+```
+
+Failure: `401 Unauthorized` with code `invalid_token` without a valid access token, or
+`403 Forbidden` with code `forbidden` for a non-HR user.
+
+### GET `/api/v1/employees/:id`
+
+HR can view any employee. A standard employee can view only the record linked to their own user;
+another employee's URL returns `403 Forbidden`. The response includes bank details and the latest
+compensation with its components.
+
+Success: `200 OK`
+
+```json
+{
+  "data": {
+    "id": 1,
+    "employee_id": "EMP101",
+    "first_name": "Ravi",
+    "last_name": "Kumar",
+    "work_email": "ravi@demo.test",
+    "country": "India",
+    "currency": "INR",
+    "job_title": "Software Engineer",
+    "start_date": "2026-01-01",
+    "status": "active",
+    "department": { "id": 1, "name": "Engineering" },
+    "bank": {
+      "bank_name": "HDFC Bank",
+      "ifsc": "HDFC0001234",
+      "account_number": "123456789012"
+    },
+    "compensation": {
+      "id": 1,
+      "effective_date": "2026-01-01",
+      "annual_ctc": "1200000.00",
+      "currency": "INR",
+      "components": [
+        { "id": 1, "name": "Basic", "annual_amount": "1000000.00" },
+        { "id": 2, "name": "Allowance", "annual_amount": "200000.00" }
+      ]
+    }
+  }
+}
+```
+
+Failure: `401 Unauthorized` with code `invalid_token`, `403 Forbidden` with code `forbidden`, or
+`404 Not Found` for an unknown employee id.
+
+### POST `/api/v1/employees`
+
+HR only. Creates an employee, an initial compensation row, and its components in one transaction.
+Currency is derived from the employee's country. Annual CTC is not accepted as an input; it is
+calculated from the component amounts and returned as a decimal string.
+
+Request:
+
+```json
+{
+  "employee": {
+    "employee_id": "EMP101",
+    "first_name": "Ravi",
+    "last_name": "Kumar",
+    "work_email": "ravi@demo.test",
+    "country": "India",
+    "department_id": 1,
+    "job_title": "Software Engineer",
+    "start_date": "2026-01-01",
+    "bank_name": "HDFC Bank",
+    "ifsc": "HDFC0001234",
+    "account_number": "123456789012",
+    "status": "active"
+  },
+  "compensation": {
+    "components": [
+      { "name": "Basic", "annual_amount": 1000000 },
+      { "name": "Allowance", "annual_amount": 200000 }
+    ]
+  }
+}
+```
+
+`ifsc` is optional. `status` is `onboarding` or `active`. `components` must contain at least one
+row. Any supplied `annual_ctc` is ignored; the derived value is authoritative.
+
+Success: `201 Created`
+
+```json
+{
+  "data": {
+    "id": 1,
+    "employee_id": "EMP101",
+    "first_name": "Ravi",
+    "last_name": "Kumar",
+    "work_email": "ravi@demo.test",
+    "country": "India",
+    "currency": "INR",
+    "job_title": "Software Engineer",
+    "start_date": "2026-01-01",
+    "status": "active",
+    "department": { "id": 1, "name": "Engineering" },
+    "compensation": {
+      "id": 1,
+      "effective_date": "2026-01-01",
+      "annual_ctc": "1200000.00",
+      "currency": "INR",
+      "components": [
+        { "id": 1, "name": "Basic", "annual_amount": "1000000.00" },
+        { "id": 2, "name": "Allowance", "annual_amount": "200000.00" }
+      ]
+    }
+  }
+}
+```
+
+Failures:
+
+- `422 Unprocessable Content` with code `validation_failed` for duplicate employee ID or work email,
+  missing/invalid fields, or an empty component list. `details` contains field messages.
+- `401 Unauthorized` with code `invalid_token` without a valid access token.
+- `403 Forbidden` with code `forbidden` for a non-HR user.
