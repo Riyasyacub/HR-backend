@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_073817) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_092446) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -184,6 +184,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_073817) do
     t.jsonb "blocking_issues", default: [], null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "employee_code"
+    t.string "employee_name"
+    t.string "bank_name"
+    t.string "ifsc"
+    t.string "account_number"
     t.index ["employee_id"], name: "index_payroll_lines_on_employee_id"
     t.index ["payroll_run_id", "employee_id"], name: "index_payroll_lines_on_payroll_run_id_and_employee_id", unique: true
     t.index ["payroll_run_id"], name: "index_payroll_lines_on_payroll_run_id"
@@ -197,9 +202,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_073817) do
     t.datetime "updated_at", null: false
     t.string "calculation_status", default: "queued", null: false
     t.string "calculation_error"
+    t.date "paid_on"
     t.index ["created_by_id"], name: "index_payroll_runs_on_created_by_id"
     t.index ["month"], name: "index_payroll_runs_on_month", unique: true
-    t.check_constraint "calculation_status::text = ANY (ARRAY['queued'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "payroll_runs_calculation_status_known"
+    t.check_constraint "calculation_status::text = ANY (ARRAY['queued'::character varying::text, 'processing'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text])", name: "payroll_runs_calculation_status_known"
+    t.check_constraint "status::text <> 'paid'::text OR paid_on IS NOT NULL", name: "payroll_runs_paid_on_when_paid"
     t.check_constraint "status::text = ANY (ARRAY['draft'::character varying::text, 'generated'::character varying::text, 'paid'::character varying::text])", name: "payroll_runs_status_known"
   end
 

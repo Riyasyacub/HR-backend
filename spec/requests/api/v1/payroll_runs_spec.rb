@@ -158,4 +158,116 @@ RSpec.describe "Payroll runs", type: :request do
       expect(response).to have_http_status(:forbidden)
     end
   end
+
+  describe "POST /api/v1/payroll_runs/:id/generate" do
+    let(:run) { create(:payroll_run, calculation_status: "completed") }
+
+    it "generates a ready draft run" do
+      create(:payroll_line, payroll_run: run)
+
+      post("/api/v1/payroll_runs/#{run.id}/generate", headers: hr_headers)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["data"]).to include("id" => run.id, "status" => "generated")
+    end
+
+    it "rejects a run with blocking issues (AC-01)" do
+      create(:payroll_line, payroll_run: run, blocking_issues: [ "missing account number" ])
+
+      post("/api/v1/payroll_runs/#{run.id}/generate", headers: hr_headers)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body["error"]["code"]).to eq("not_generatable")
+    end
+
+    it "rejects recalculating a generated run (TC-S09-03)" do
+      run.update!(status: "generated")
+
+      post("/api/v1/payroll_runs/#{run.id}/recalculate", headers: hr_headers)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(run.reload.calculation_status).to eq("completed")
+    end
+
+    it "denies an employee (TC-S09-07)" do
+      employee_user = create(:user)
+      create(:employee, user: employee_user)
+
+      post("/api/v1/payroll_runs/#{run.id}/generate", headers: authentication_headers(employee_user))
+
+      expect(response).to have_http_status(:forbidden)
+      expect(run.reload.status).to eq("draft")
+    end
+  end
+
+  describe "GET /api/v1/payroll_runs/:id/export" do
+    let(:run) { create(:payroll_run, status: "generated", calculation_status: "completed") }
+
+    def rows(body)
+      file = Tempfile.new([ "payroll", ".xlsx" ]).tap { |f| f.binmode && f.write(body) && f.flush }
+      Roo::Excelx.new(file.path).sheet(0).to_a
+    end
+
+    it "downloads a generated run and re-downloads identical rows (TC-S09-01, TC-S09-04)" do
+      create(:payroll_line, payroll_run: run, employee_code: "EMP102", bank_name: "HDFC Bank", account_number: "1")
+
+      get("/api/v1/payroll_runs/#{run.id}/export", headers: hr_headers)
+      first_download = response.body
+
+      expect(response).to have_http_status(:ok)
+      expect(response.headers["Content-Disposition"]).to include('filename="payroll-2026-11.xlsx"')
+      get("/api/v1/payroll_runs/#{run.id}/export", headers: hr_headers)
+      expect(rows(response.body)).to eq(rows(first_download))
+    end
+
+    it "rejects exporting a draft run" do
+      run.update!(status: "draft")
+
+      get("/api/v1/payroll_runs/#{run.id}/export", headers: hr_headers)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body["error"]["code"]).to eq("not_exportable")
+    end
+
+    it "denies an employee (TC-S09-07)" do
+      employee_user = create(:user)
+      create(:employee, user: employee_user)
+
+      get("/api/v1/payroll_runs/#{run.id}/export", headers: authentication_headers(employee_user))
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
+  describe "POST /api/v1/payroll_runs/:id/mark_paid" do
+    let(:run) { create(:payroll_run, status: "generated", calculation_status: "completed") }
+
+    def mark_paid(paid_on, headers = hr_headers)
+      post("/api/v1/payroll_runs/#{run.id}/mark_paid", params: { paid_on: }, as: :json, headers:)
+    end
+
+    it "marks a generated run paid" do
+      mark_paid(Date.current.iso8601)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["data"]).to include("status" => "paid", "paid_on" => Date.current.iso8601)
+    end
+
+    it "rejects a missing or invalid date" do
+      mark_paid("tomorrow")
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body["error"]["code"]).to eq("not_payable")
+    end
+
+    it "denies an employee" do
+      employee_user = create(:user)
+      create(:employee, user: employee_user)
+
+      mark_paid(Date.current.iso8601, authentication_headers(employee_user))
+
+      expect(response).to have_http_status(:forbidden)
+      expect(run.reload.status).to eq("generated")
+    end
+  end
 end

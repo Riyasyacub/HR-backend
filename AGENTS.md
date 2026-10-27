@@ -9,7 +9,7 @@ conflicts with a direct request from the user, ask before proceeding.
 |---|---|
 | Application | Rails 8.1.4 API-only backend (`config.api_only = true`) with PostgreSQL 18.6 |
 | Frontend | Separate React repo at `../incubyte-FE` (Vite + TypeScript; shadcn/ui + Tailwind CSS; Vitest + React Testing Library) |
-| Current state | S01–S06 and S08 complete (auth, HR settings, employee records, hierarchy, self-service and directory, leave Excel upload with balances, monthly payroll draft run); S07 cut; S09 next; smoke pack deferred to the end; RSpec, Mailhog, and Solid Queue (run `bin/jobs` in development) configured |
+| Current state | S01–S06, S08 and S09 complete (auth, HR settings, employee records, hierarchy, self-service and directory, leave Excel upload with balances, monthly payroll run, payroll Excel export and paid status); S07 cut; S10 next; smoke pack deferred to the end; RSpec, Mailhog, and Solid Queue (run `bin/jobs` in development) configured |
 | Product docs | `docs/requirements.md`, `docs/product-stories.md`, `docs/test-plan.md`, `docs/README.md` |
 | Story order | S01 → S19, strictly sequential (S07 cut; S19 change history deferred from S05) |
 | Prompt log | `prompts/prompt-log.md` |

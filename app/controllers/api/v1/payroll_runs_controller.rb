@@ -41,6 +41,35 @@ class Api::V1::PayrollRunsController < ApplicationController
     render json: { data: run_json(run.reload) }, status: :accepted
   end
 
+  def generate
+    authorize PayrollRun
+    run = PayrollRun.find(params[:id])
+    Payroll::GenerateRun.call(run)
+    render json: { data: run_json(run) }
+  rescue Payroll::GenerateRun::NotGeneratable => e
+    render_error(status: :unprocessable_content, code: "not_generatable", message: e.message)
+  end
+
+  def export
+    authorize PayrollRun
+    run = PayrollRun.find(params[:id])
+    if run.status == "draft"
+      return render_error(status: :unprocessable_content, code: "not_exportable", message: "Generate the run before exporting it")
+    end
+
+    send_data Payroll::ExportSheet.to_xlsx(run), filename: "payroll-#{run.month.strftime('%Y-%m')}.xlsx",
+      type: LeaveImport::XLSX_CONTENT_TYPE
+  end
+
+  def mark_paid
+    authorize PayrollRun
+    run = PayrollRun.find(params[:id])
+    Payroll::MarkPaid.call(run, paid_on: requested_paid_on)
+    render json: { data: run_json(run) }
+  rescue Payroll::MarkPaid::NotPayable => e
+    render_error(status: :unprocessable_content, code: "not_payable", message: e.message)
+  end
+
   def lines
     authorize PayrollRun
     lines = PayrollRun.find(params[:id]).payroll_lines.preload(:employee).joins(:employee).order("employees.employee_id")
@@ -60,8 +89,14 @@ class Api::V1::PayrollRunsController < ApplicationController
     nil
   end
 
+  def requested_paid_on
+    Date.iso8601(params[:paid_on].to_s)
+  rescue Date::Error
+    nil
+  end
+
   def run_json(run)
-    run.as_json(only: %i[id month status calculation_status calculation_error created_at])
+    run.as_json(only: %i[id month status calculation_status calculation_error paid_on created_at])
   end
 
   def line_json(line)

@@ -600,7 +600,7 @@ Success: `202 Accepted`
 {
   "data": {
     "id": 4, "month": "2026-11-01", "status": "draft", "calculation_status": "queued",
-    "calculation_error": null, "created_at": "2026-10-27T08:00:00Z"
+    "calculation_error": null, "paid_on": null, "created_at": "2026-10-27T08:00:00Z"
   }
 }
 ```
@@ -620,7 +620,7 @@ The run plus totals per country and currency (never converted across currencies)
 {
   "data": {
     "id": 4, "month": "2026-11-01", "status": "draft", "calculation_status": "completed",
-    "calculation_error": null, "created_at": "2026-10-27T08:00:00Z",
+    "calculation_error": null, "paid_on": null, "created_at": "2026-10-27T08:00:00Z",
     "blocking_issues_count": 1,
     "totals": [
       { "country": "India", "currency": "INR", "employees": 2, "monthly_gross": "150000.00",
@@ -635,6 +635,27 @@ The run plus totals per country and currency (never converted across currencies)
 Re-queues the calculation for a `draft` run whose calculation is `completed` or `failed` (for
 example after a new leave upload). Returns `202` with the run (`calculation_status: "queued"`).
 A run that is already queued/processing, or not a draft, returns `422` (`not_recalculable`).
+
+### POST `/api/v1/payroll_runs/:id/generate`
+
+Locks a `draft` run whose calculation is `completed` and that has no blocking issues: status
+becomes `generated` and each line freezes the employee ID, name, bank name, IFSC, and account
+number used by the export. Returns `200` with the run. Any other run returns `422`
+(`not_generatable`). A generated run cannot be recalculated or regenerated.
+
+### GET `/api/v1/payroll_runs/:id/export`
+
+Downloads a `generated` or `paid` run as `payroll-YYYY-MM.xlsx`, one row per line in employee ID
+order, built from the details frozen at generation, so every re-download has the same rows.
+Columns: Employee ID, Name, Country, Currency, Bank name, IFSC, Account number, Monthly gross,
+Unpaid leave deduction, Total, Pay period (`YYYY-MM`). Amounts are numbers with two decimals.
+A `draft` run returns `422` (`not_exportable`).
+
+### POST `/api/v1/payroll_runs/:id/mark_paid`
+
+Body `{ "paid_on": "2026-12-01" }` (ISO date, not in the future). Moves a `generated` run to
+`paid` and records `paid_on`. Returns `200` with the run. A missing, invalid or future date, or a
+run that is not `generated`, returns `422` (`not_payable`).
 
 ### GET `/api/v1/payroll_runs/:id/lines`
 

@@ -22,7 +22,10 @@ Rails.application.routes.draw do
       resources :payroll_runs, only: %i[index create show] do
         member do
           post :recalculate
+          post :generate
+          post :mark_paid
           get :lines
+          get :export
         end
       end
       resources :leave_imports, only: %i[create show] do

@@ -1142,3 +1142,51 @@ Notes: User defers the regression smoke pack to the end instead of per story (ov
 > 1A, 2 yes
 
 Notes: Answers the commit and docs questions. S08 signed off without the smoke pack. CLAUDE.md and AGENTS.md: commit rule and per-story done list no longer require the smoke pack; current state says S08 complete, S09 next. docs/test-plan.md: smoke pack runs once at the end; leave upload check corrected to S06 onward. Committed S08 in both repos (backend commit also carries the uncommitted S07-cut docs and csv gem removal). CLAUDE.md left untracked as before.
+
+### Start S09
+
+> yes
+
+Notes: In progress.
+
+### S09 decisions
+
+> 1A, 2A, 3A, 3 - remove adjustments now, 5A, 6 - audit entries are deferred, we will get back to it later. 7A - without audit history as it is deferred., 8 - ok
+
+Notes: Read "3 - remove adjustments now" as the answer to Q4 (drop the adjustments column from the export). Decisions: snapshot details on lines at generation, synchronous generate, generate = completed draft with no blocking issues, no adjustments column, mark paid with paid_on date, audit deferred (AC-06, TC-S09-06), frontend without audit history. Docs: S09 story and PAY-06 updated. Chunk S09-1: migration adds payroll_lines employee_code/employee_name/bank_name/ifsc/account_number and payroll_runs.paid_on; Payroll::GenerateRun (row lock, state re-check, one UPDATE ... FROM employees to freeze details, status generated); POST /payroll_runs/:id/generate (422 not_generatable); policy generate?; route; run JSON includes paid_on; docs/api.md. Specs: generate_run_spec (4), request specs (4). Red confirmed. RSpec 277/0, RuboCop clean, Brakeman 0. Production lines about 46 (service 24, controller 10, migration 10, policy/route 2).
+
+### Continue S09-2
+
+> approved, continue to next chunk
+
+Notes: Chunk S09-2. Payroll::ExportSheet (app/services/payroll/export_sheet.rb): caxlsx sheet with the PAY-06 columns (no adjustments), rows from frozen line details via pluck in employee ID order, amounts as 0.00 numbers, pay period YYYY-MM. GET /payroll_runs/:id/export (send_data payroll-YYYY-MM.xlsx; 422 not_exportable for drafts); policy export?; route; docs/api.md. Specs: export_sheet_spec (2), request specs (3). Red confirmed. RSpec 282/0, RuboCop clean, Brakeman 0. Production lines about 32.
+
+### Continue S09-3
+
+> approved, continue to next chunk
+
+Notes: Chunk S09-3. Migration adds check constraint payroll_runs_paid_on_when_paid; Payroll::MarkPaid (date required and not in the future, row lock, generated -> paid with paid_on); POST /payroll_runs/:id/mark_paid (ISO date, 422 not_payable); policy mark_paid?; route; docs/api.md. Specs: model constraint (1), mark_paid_spec (4), request specs (3). Red confirmed. Production lines about 32.
+
+### Continue S09-4
+
+> approved, continue to next chunk
+
+Notes: Chunk S09-4 (frontend). src/api/payroll.ts: paid_on on PayrollRun, generatePayrollRun, markPayrollRunPaid (shared postRun helper), downloadPayrollExport (blob). New src/components/PayrollRunActions.tsx: Generate (disabled until calculation completed and no blocking issues), Download XLSX for generated/paid, Paid on date + Mark paid for generated, paid date shown, API error alert. PayrollRunPage renders it and merges the updated run. Tests: PayrollRunActions (6), api (2), page (1); PayrollRunsPage fixture gains paid_on. Red confirmed. Vitest 111 passed, typecheck and lint clean. Production lines about 62.
+
+### Paid-on constraint not migrated
+
+> The constraint is not migrated. check that
+
+Notes: Correction check for S09-3. Verified migration 20261027092446 is up in development and test; payroll_runs_paid_on_when_paid exists in the live development database and in db/schema.rb. Queue database shows the usual 001 entry from queue_schema.rb. No change made; asked the user where they saw it missing.
+
+### Server restart resolved the constraint issue
+
+> i just restarted the server, it worked
+
+Notes: Follow-up to the constraint check: the running Rails server had been started before the migration and kept old schema information; restart fixed it. No code changed. S09-4 still awaiting approval.
+
+### S09 sign-off
+
+> approved, continue to the next chunk
+
+Notes: S09-4 approved; S09 signed off (smoke pack deferred to the end). CLAUDE.md and AGENTS.md current state: S09 complete, S10 next. Committed S09 in both repos (CLAUDE.md stays untracked).

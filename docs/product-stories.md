@@ -386,10 +386,11 @@ As an HR user, I want to prepare a monthly payroll run from CTC and unpaid leave
 As an HR user, I want to export the approved monthly payroll to Excel and re-download past runs, so that Finance can pay employees from one file.
 
 **Feature**
-- Generate XLSX with the documented columns, including bank name, IFSC, account number, gross, unpaid deduction, adjustments, total, pay period.
+- Generate a draft run whose calculation is complete and has no blocking issues; employee and bank details are frozen onto its lines.
+- Export XLSX with the documented columns, including bank name, IFSC, account number, gross, unpaid deduction, total, pay period (no adjustments column; adjustments are deferred).
 - Generated runs are immutable; re-download returns the same content.
-- Status: draft → generated → paid.
-- Export and status changes are audit-logged.
+- Status: draft → generated → paid (paid with a date, not in the future).
+- Audit logging of export and status changes is deferred.
 - Only HR can export.
 
 **Acceptance criteria**
@@ -399,7 +400,7 @@ As an HR user, I want to export the approved monthly payroll to Excel and re-dow
 - **AC-03** Amounts and bank details in the file match the review screen.
 - **AC-04** After generation, the run is locked; edits are rejected.
 - **AC-05** A generated run can be re-downloaded with identical content and marked paid.
-- **AC-06** Export and paid status are recorded in the audit history.
+- **AC-06** Deferred: audit history for export and paid status will be added later.
 - **AC-07** Only HR can export.
 
 **Test cases**
@@ -407,11 +408,11 @@ As an HR user, I want to export the approved monthly payroll to Excel and re-dow
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
 | TC-S09-01 | H | Approved draft run | Export XLSX | File downloads and opens; headers match the specification |
-| TC-S09-02 | H | Exported file | Compare Priya's row | Bank name, IFSC, account number, gross, deduction, adjustment, total, period are correct |
+| TC-S09-02 | H | Exported file | Compare Priya's row | Bank name, IFSC, account number, gross, deduction, total, period are correct |
 | TC-S09-03 | N | Export completed | Attempt to edit the run | Edit rejected; run is immutable |
 | TC-S09-04 | H | Generated run exists | Re-download | Content identical (same amounts and rows) |
 | TC-S09-05 | H | Generated run exists | Mark as paid with a date | Status becomes paid; date recorded |
-| TC-S09-06 | H | Export performed | Open audit history | Export actor, timestamp, and paid status are listed |
+| TC-S09-06 | — | Deferred with audit history | — | — |
 | TC-S09-07 | P | Priya signed in | Request the payroll export URL | Access denied |
 
 ---

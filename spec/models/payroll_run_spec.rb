@@ -16,4 +16,10 @@ RSpec.describe PayrollRun, type: :model do
   it "rejects an unknown status" do
     expect(build(:payroll_run, status: "approved")).not_to be_valid
   end
+
+  it "requires paid_on in the database once paid" do
+    run = create(:payroll_run)
+
+    expect { run.update_columns(status: "paid") }.to raise_error(ActiveRecord::StatementInvalid, /payroll_runs_paid_on_when_paid/)
+  end
 end

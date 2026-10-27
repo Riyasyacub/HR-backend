@@ -272,7 +272,7 @@ Calculation is limited to monthly gross minus unpaid leave, plus manual adjustme
 | PAY-03 | Add one-off adjustments (bonus, deduction, leave payout, correction) | M | Adjustment is visible in the run and audit-logged |
 | PAY-04 | Automatically deduct unpaid leave taken in the payroll month | M | Deduction = (monthly gross ÷ working days in month) × unpaid leave days; shown as a separate line |
 | PAY-05 | Review the payroll run before export | M | Review shows employee, country, currency, monthly gross, unpaid leave deduction, adjustments, total, and bank details |
-| PAY-06 | Export the payout list to Excel | M | File contains employee ID, name, country, currency, bank name, IFSC, account number, monthly gross, unpaid leave deduction, adjustments, total, and pay period |
+| PAY-06 | Export the payout list to Excel | M | File contains employee ID, name, country, currency, bank name, IFSC, account number, monthly gross, unpaid leave deduction, total, and pay period (adjustments deferred) |
 | PAY-07 | Store payroll history and allow re-download of past runs | M | Every generated run remains available with its original contents |
 | PAY-08 | Status lifecycle: draft, generated, paid | S | Generated file is fixed; status can be marked paid with a date |
 | PAY-09 | Block export when required data is missing | M | Run cannot be exported while bank name, account number, CTC, or components are missing; affected employees are listed |
@@ -457,7 +457,7 @@ e-signature, job board, background-check, finance, or messaging integration.
 | Import behaviour | Download template, upload, preview, validate structure and required fields, import valid rows, report failed rows with row number and reason |
 | Duplicate handling | Duplicate employee ID or work email is rejected per row; valid rows still import |
 | Manager references | `Manager Employee ID` must reference an existing employee or a row in the same file; the importer resolves managers in a second pass |
-| Payroll export | Monthly payout list with employee, country, currency, bank details, monthly gross, unpaid leave deduction, adjustments, total, and pay period |
+| Payroll export | Monthly payout list with employee, country, currency, bank details, monthly gross, unpaid leave deduction, total, and pay period (adjustments deferred) |
 | Report export | Any standard report can be downloaded as CSV or XLSX |
 | No verification | Imported values are not checked against external sources or documents |
 

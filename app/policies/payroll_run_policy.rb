@@ -4,4 +4,7 @@ class PayrollRunPolicy < ApplicationPolicy
   def show? = hr?
   def recalculate? = hr?
   def lines? = hr?
+  def generate? = hr?
+  def export? = hr?
+  def mark_paid? = hr?
 end
