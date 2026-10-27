@@ -18,4 +18,8 @@ class User < ApplicationRecord
   validates :password, length: { minimum: 8 }, allow_nil: true
 
   delegate :hr?, :standard_employee?, to: :role
+
+  def manager?
+    employee&.manager? || false
+  end
 end

@@ -94,4 +94,66 @@ RSpec.describe Employee, type: :model do
     expect(employee.current_compensation(Date.new(2026, 8, 1))).to eq(second)
     expect(employee.current_compensation(Date.new(2027, 2, 1))).to eq(future)
   end
+
+  describe "reporting hierarchy" do
+    let(:arjun) { create(:employee, employee_id: "EMP101", work_email: "arjun@demo.test") }
+    let(:priya) { create(:employee, employee_id: "EMP102", work_email: "priya@demo.test", manager: arjun) }
+
+    it "allows assigning an existing employee as manager" do
+      expect(priya.manager).to eq(arjun)
+      expect(arjun.subordinates).to include(priya)
+    end
+
+    it "allows leaving manager empty" do
+      expect(arjun.manager).to be_nil
+    end
+
+    it "rejects setting self as manager" do
+      arjun.manager = arjun
+
+      expect(arjun).not_to be_valid
+      expect(arjun.errors[:manager]).to include("cannot be yourself")
+    end
+
+    it "enforces self-management rejection in the database" do
+      expect do
+        arjun.update_column(:manager_id, arjun.id)
+      end.to raise_error(ActiveRecord::StatementInvalid, /check_employees_manager_not_self/)
+    end
+
+    it "rejects direct reporting cycles" do
+      arjun.manager = priya
+
+      expect(arjun).not_to be_valid
+      expect(arjun.errors[:manager]).to include("creates a reporting cycle")
+    end
+
+    it "rejects indirect reporting cycles" do
+      meera = create(:employee, employee_id: "EMP103", work_email: "meera@demo.test", manager: nil)
+      arjun.update!(manager: meera)
+      # priya -> arjun -> meera. Attempting meera -> priya should fail
+      meera.manager = priya
+
+      expect(meera).not_to be_valid
+      expect(meera.errors[:manager]).to include("creates a reporting cycle")
+    end
+
+    it "returns all subordinate ids recursively" do
+      kavita = create(:employee, employee_id: "EMP104", work_email: "kavita@demo.test", manager: priya)
+      meera = create(:employee, employee_id: "EMP103", work_email: "meera@demo.test")
+      arjun.update!(manager: meera)
+      # meera -> arjun -> priya -> kavita
+
+      expect(meera.subordinate_ids).to match_array([ arjun.id, priya.id, kavita.id ])
+      expect(arjun.subordinate_ids).to match_array([ priya.id, kavita.id ])
+      expect(priya.subordinate_ids).to eq([ kavita.id ])
+      expect(kavita.subordinate_ids).to be_empty
+    end
+
+    it "identifies managers by whether they have direct reports" do
+      priya
+      expect(arjun).to be_manager
+      expect(priya).not_to be_manager
+    end
+  end
 end

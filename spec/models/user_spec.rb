@@ -37,4 +37,19 @@ RSpec.describe User, type: :model do
     expect(user.token_version).to eq(0)
     expect(user).to be_active
   end
+
+  it "identifies managers through their employee record having direct reports" do
+    manager_user = create(:user)
+    manager_emp = create(:employee, user: manager_user)
+    create(:employee, manager: manager_emp)
+
+    individual_user = create(:user)
+    create(:employee, user: individual_user)
+
+    no_emp_user = create(:user)
+
+    expect(manager_user).to be_manager
+    expect(individual_user).not_to be_manager
+    expect(no_emp_user).not_to be_manager
+  end
 end

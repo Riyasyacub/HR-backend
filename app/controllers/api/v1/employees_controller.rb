@@ -1,14 +1,15 @@
 class Api::V1::EmployeesController < ApplicationController
   DEFAULT_PER_PAGE = 25
   EMPLOYEE_ATTRIBUTES = %i[employee_id first_name last_name work_email country department_id
-    job_title start_date bank_name ifsc account_number status].freeze
+    job_title start_date bank_name ifsc account_number status manager_id].freeze
+  UPDATE_ATTRIBUTES = %i[manager_id department_id job_title status].freeze
 
   before_action :authenticate_user!
   after_action :verify_authorized
 
   def index
     authorize Employee
-    employees = Employee.includes(:department).order(:employee_id)
+    employees = Employee.includes(:department, :manager).order(:employee_id)
       .offset((page - 1) * per_page).limit(per_page)
     render json: { data: employees.map { |employee| employee_json(employee) },
       meta: { page:, per_page:, total: Employee.count } }
@@ -17,6 +18,23 @@ class Api::V1::EmployeesController < ApplicationController
   def show
     authorize employee
     render json: { data: employee_detail_json(employee) }
+  end
+
+  def team
+    authorize Employee
+    ids = current_user.employee.subordinate_ids
+    employees = Employee.includes(:department, :manager).where(id: ids).order(:employee_id)
+    render json: { data: employees.map { |e| employee_json(e) } }
+  end
+
+  def update
+    authorize employee
+    employee.update!(params.expect(employee: UPDATE_ATTRIBUTES))
+    render json: { data: employee_detail_json(employee.reload) }
+  rescue ActiveRecord::RecordInvalid => e
+    render_error(status: :unprocessable_content, code: "validation_failed",
+      message: e.record.errors.full_messages.to_sentence,
+      details: e.record.errors.full_messages)
   end
 
   def create
@@ -42,7 +60,7 @@ class Api::V1::EmployeesController < ApplicationController
   private
 
   def employee
-    @employee ||= Employee.includes(:department).find(params[:id])
+    @employee ||= Employee.includes(:department, :manager).find(params[:id])
   end
 
   def page
@@ -56,12 +74,28 @@ class Api::V1::EmployeesController < ApplicationController
   def employee_json(employee)
     employee.as_json(only: %i[id employee_id first_name last_name work_email country currency
       job_title start_date status])
-      .merge("department" => { "id" => employee.department_id,
-        "name" => employee.department.name })
+      .merge(
+        "department" => { "id" => employee.department_id,
+          "name" => employee.department.name },
+        "manager" => manager_json(employee.manager)
+      )
+  end
+
+  def manager_json(manager)
+    return unless manager
+
+    {
+      "id" => manager.id,
+      "employee_id" => manager.employee_id,
+      "name" => "#{manager.first_name} #{manager.last_name}".strip
+    }
   end
 
   def employee_detail_json(employee)
-    employee_json(employee).merge(
+    json = employee_json(employee)
+    return json unless current_user.hr? || employee.user_id == current_user.id
+
+    json.merge(
       "bank" => employee.as_json(only: %i[bank_name ifsc account_number]),
       "compensation" => compensation_json(employee)
     )

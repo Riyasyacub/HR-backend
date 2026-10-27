@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_26_122857) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_26_164500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -76,10 +76,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_122857) do
     t.string "status", default: "onboarding", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "manager_id"
     t.index "lower((employee_id)::text)", name: "index_employees_on_lower_employee_id", unique: true
     t.index "lower((work_email)::text)", name: "index_employees_on_lower_work_email", unique: true
     t.index ["department_id"], name: "index_employees_on_department_id"
+    t.index ["manager_id"], name: "index_employees_on_manager_id"
     t.index ["user_id"], name: "index_employees_on_user_id", unique: true
+    t.check_constraint "manager_id IS NULL OR manager_id <> id", name: "check_employees_manager_not_self"
   end
 
   create_table "leave_types", force: :cascade do |t|
@@ -129,6 +132,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_26_122857) do
   add_foreign_key "compensation_components", "compensations"
   add_foreign_key "compensations", "employees"
   add_foreign_key "employees", "departments"
+  add_foreign_key "employees", "employees", column: "manager_id"
   add_foreign_key "employees", "users"
   add_foreign_key "user_sessions", "users"
   add_foreign_key "users", "roles"

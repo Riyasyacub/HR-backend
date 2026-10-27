@@ -32,7 +32,8 @@ RSpec.describe "Current user", type: :request do
           "email" => user.email,
           "country" => user.country,
           "role" => Role::HR,
-          "employee_id" => nil
+          "employee_id" => nil,
+          "is_manager" => false
         }
       }
     )
@@ -46,6 +47,17 @@ RSpec.describe "Current user", type: :request do
 
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.dig("data", "user", "employee_id")).to eq(employee.id)
+  end
+
+  it "returns is_manager true when user's employee has direct reports" do
+    manager_user = create(:user, email: "arjun@demo.test")
+    arjun = create(:employee, user: manager_user)
+    create(:employee, manager: arjun)
+
+    get "/api/v1/me", headers: authentication_headers(manager_user)
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.dig("data", "user", "is_manager")).to be(true)
   end
 
   it "returns the employee role" do

@@ -707,4 +707,91 @@ Notes: Story S03 (Create and manage employee records) is completely delivered ac
 
 > commit and start the next story
 
-Notes: Committed Story S03 in both repositories (`incubyte` and `../incubyte-FE`). Starting S04 planning for reporting hierarchy and manager scope.
+Notes: Committed Story S03 in both repositories: backend commit `27544aa`, frontend commit `ccd7e1a`. Completed Chunk S04-1. Added `manager_id` foreign key with check constraint to `employees` table, `belongs_to :manager` and `has_many :subordinates` associations, self-management and reporting cycle validations, `subordinate_ids` recursive CTE query, `manager?` capability on `Employee` and `User`. Targeted specs: 9 examples in `spec/models/employee_spec.rb` and `spec/models/user_spec.rb`; full backend suite: 143 examples, 0 failures; RuboCop clean. Full frontend suite: 51 tests passed, typecheck and lint clean. Production lines: 43 of 50. Next: HR manager assignment & re-assignment via `PATCH /api/v1/employees/:id` or create service.
+
+
+### Start S04-2
+
+> proceed to the next chunk
+
+Notes: Completed Chunk S04-2. Added `PATCH /api/v1/employees/:id` endpoint for HR to assign, reassign, or remove an employee's manager (AC-01, AC-02, AC-03). Enforced HR-only update permission via `EmployeePolicy#update?`, rejecting updates from managers or employees with 403 (AC-06, TC-S04-07). Exposed manager details (`id`, `employee_id`, `name`) in employee JSON representation, and integrated `manager_id` into `POST /api/v1/employees`. Targeted specs: 9 examples in `spec/requests/api/v1/employees_spec.rb`; full backend suite: 152 examples, 0 failures; RuboCop clean. Full frontend suite: 51 tests passed, typecheck and lint clean. Production lines: 36 of 50. Next: Manager subtree scoping in `EmployeePolicy#show?` and manager team view (AC-04, AC-05, TC-S04-05, TC-S04-06).
+
+
+### HR manager update clarification
+
+> can't a manager_id be updated by HR?
+
+Notes: Clarified that HR *can* update an employee's `manager_id` (assign, reassign, remove), which is implemented and tested via `PATCH /api/v1/employees/:id`. The restriction in AC-06 applies to *managers* (who cannot edit manager assignments or compensation), not HR.
+
+
+### params.expect update clarification
+
+> but in @[app/controllers/api/v1/employees_controller.rb] line 25, there is expect of manager_id right?, the how it will get updated?
+
+Notes: Clarified Rails 8 `params.expect` behavior in line 25 (`employee.update!(params.expect(employee: UPDATE_ATTRIBUTES))`). It filters and permits any subset of attributes present in the payload (like strong params permit), allowing `manager_id` (including null) to be updated via `PATCH`.
+
+
+### Start S04-3
+
+> proceed to the next chunk
+
+Notes: Completed Chunk S04-3. Added manager subtree scoping to `EmployeePolicy#show?` via `manager_of_record?` checking `user.employee.subordinate_ids` (AC-04, TC-S04-05). Enforced strict privacy rule (AC-06, R-05) hiding bank details and compensation objects from manager views while keeping them visible to HR and the employee self. Exposed `is_manager` flag in `/api/v1/auth/sign_in`, `/api/v1/auth/refresh`, and `/api/v1/me` payloads. Targeted request specs: 5 examples; full backend suite: 156 examples, 0 failures; RuboCop clean. Full frontend suite: 51 tests passed, typecheck and lint clean. Production lines: 19 of 50. Next: Frontend manager role awareness, subtree navigation, and manager dashboard view (AC-04, AC-05, TC-S04-06).
+
+
+### Start S04-4
+
+> proceed to the next chunk
+
+Notes: in-flight
+
+### Start S04-4 Frontend
+
+> start next chunk
+
+Notes: Starting frontend S04-4: add ManagerRoleAwarenessProvider context, integrate /team endpoint, display subtree hierarchy visually, show manager flag and team navigation on employee profile and dashboard views.
+
+### Continue S04-4 frontend
+
+> continue
+
+Notes: Completed S04-4 frontend. Added `getTeam`, the guarded `/team` route, the manager team page
+with loading/list/empty/error states, a manager dashboard link, and manager-safe profile rendering
+that omits bank and compensation. Added Vitest coverage for the team page, manager route guard, and
+manager profile privacy. Full frontend: 59 tests passed; typecheck and lint clean. Full backend:
+159 examples, 0 failures; RuboCop clean (82 files). Updated `docs/api.md` for the team endpoint,
+HR manager assignment, `is_manager`, and manager privacy. Production lines: ~95 added across the
+frontend slice, over the 50-line review limit; recommend splitting the review into smaller chunks
+before approval. No commit made.
+
+### Fix new-employee request payload
+
+> while i try to create a new employee, it throws 400 error. the json format is not correct fix it
+
+Notes: Fixed the 400 from employee creation. The frontend was sending `components` inside the `employee`
+object and omitting the required `compensation` key. `createEmployee` now splits the payload into
+`employee` attributes and `compensation: { components: [...] }`, matching the API contract. Updated
+the API client test to assert the exact request body. Full frontend: 59 tests passed; typecheck and
+lint clean. No backend changes required.
+
+### Proceed after S04-4 review
+
+> i have reviewed it, proceed to the next chunk
+
+Notes: S04-4 reviewed and accepted. Completed S04-5, the read-only hierarchy visibility slice. Added
+the manager summary to employee list/profile payload types, a Manager column in the employee list,
+and the current manager on the employee profile with a "No manager" fallback. Non-HR users still see
+no edit controls. Full frontend: 59 tests passed; typecheck and lint clean. Production lines: 10 of
+50. The HR assignment form was split out to S04-6 because the combined slice would exceed the review
+limit. No commit made.
+
+### Start S04-6
+
+> proceed to the next chunk
+
+Notes: Completed S04-6, the HR manager assignment slice. Added `updateEmployeeManager` to the API
+client and an HR-only manager select/save form on `EmployeeProfilePage`. HR can assign, reassign, or
+remove a manager; rejected assignments show the API error and keep the profile visible. Non-HR users
+see no manager edit controls. Full frontend: 63 tests passed; typecheck and lint clean. Backend:
+159 examples, 0 failures; RuboCop clean. Production lines: 59 (14 API + 45 profile), which exceeds
+the 50-line guideline; recommend splitting into smaller chunks in future stories. S04 acceptance
+criteria AC-01 through AC-06 are now covered end-to-end. No commit made.

@@ -35,7 +35,8 @@ RSpec.describe "Sign in", type: :request do
       "email" => "hr@demo.test",
       "role" => Role::HR,
       "country" => "India",
-      "employee_id" => nil
+      "employee_id" => nil,
+      "is_manager" => false
     )
     expect(response.parsed_body.to_s).not_to include("Demo@1234", user.password_digest)
     expect(response.headers["Access-Control-Allow-Credentials"]).to eq("true")

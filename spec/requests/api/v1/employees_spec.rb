@@ -26,13 +26,15 @@ RSpec.describe "Employees", type: :request do
           "id" => anita.id, "employee_id" => "EMP100", "first_name" => "Anita",
           "last_name" => "Sharma", "work_email" => "anita@demo.test", "country" => "India",
           "currency" => "INR", "job_title" => "Sales Lead", "start_date" => "2026-02-01",
-          "status" => "active", "department" => { "id" => sales.id, "name" => "Sales" }
+          "status" => "active", "department" => { "id" => sales.id, "name" => "Sales" },
+          "manager" => nil
         },
         {
           "id" => ravi.id, "employee_id" => "EMP101", "first_name" => "Ravi",
           "last_name" => "Kumar", "work_email" => "ravi@demo.test", "country" => "India",
           "currency" => "INR", "job_title" => "Software Engineer", "start_date" => "2026-01-01",
-          "status" => "active", "department" => { "id" => engineering.id, "name" => "Engineering" }
+          "status" => "active", "department" => { "id" => engineering.id, "name" => "Engineering" },
+          "manager" => nil
         }
       ],
       "meta" => { "page" => 1, "per_page" => 25, "total" => 2 }
@@ -110,6 +112,7 @@ RSpec.describe "Employees", type: :request do
           "last_name" => "Kumar", "work_email" => "ravi@demo.test", "country" => "India",
           "currency" => "INR", "job_title" => "Software Engineer", "start_date" => "2026-01-01",
           "status" => "active", "department" => { "id" => department.id, "name" => "Engineering" },
+          "manager" => nil,
           "bank" => {
             "bank_name" => "HDFC Bank", "ifsc" => "HDFC0001234",
             "account_number" => "123456789012"
@@ -139,6 +142,41 @@ RSpec.describe "Employees", type: :request do
 
     it "denies an employee access to another employee's profile" do
       get_employee(employee.id, authentication_headers(create(:user)))
+
+      expect(response).to have_http_status(:forbidden)
+      expect(response.parsed_body.dig("error", "code")).to eq("forbidden")
+    end
+
+    it "allows a manager to view an employee profile in their subtree (AC-04, TC-S04-05)" do
+      manager_user = create(:user, email: "arjun@demo.test")
+      arjun = create(:employee, user: manager_user)
+      employee.update!(manager: arjun)
+
+      get_employee(employee.id, authentication_headers(manager_user))
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body.dig("data", "id")).to eq(employee.id)
+      expect(response.parsed_body.dig("data", "first_name")).to eq("Ravi")
+    end
+
+    it "hides compensation and bank details from a manager (AC-06, R-05)" do
+      manager_user = create(:user, email: "arjun@demo.test")
+      arjun = create(:employee, user: manager_user)
+      employee.update!(manager: arjun)
+
+      get_employee(employee.id, authentication_headers(manager_user))
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body["data"]).not_to have_key("bank")
+      expect(response.parsed_body["data"]).not_to have_key("compensation")
+    end
+
+    it "denies a manager access to an employee outside their subtree (AC-04, TC-S04-05)" do
+      manager_user = create(:user, email: "robert@demo.test")
+      robert = create(:employee, user: manager_user)
+      other_emp = create(:employee, manager: robert)
+
+      get_employee(employee.id, authentication_headers(manager_user))
 
       expect(response).to have_http_status(:forbidden)
       expect(response.parsed_body.dig("error", "code")).to eq("forbidden")
@@ -212,6 +250,7 @@ RSpec.describe "Employees", type: :request do
           "start_date" => "2026-01-01",
           "status" => "active",
           "department" => { "id" => department.id, "name" => "Engineering" },
+          "manager" => nil,
           "compensation" => {
             "id" => compensation.id,
             "effective_date" => "2026-01-01",
@@ -294,6 +333,140 @@ RSpec.describe "Employees", type: :request do
 
       expect(response).to have_http_status(:unauthorized)
       expect(response.parsed_body.dig("error", "code")).to eq("invalid_token")
+    end
+
+    it "creates an employee assigned to an existing manager" do
+      manager = create(:employee, employee_id: "EMP100", work_email: "mgr@demo.test")
+
+      post_employee(payload.deep_merge(employee: { manager_id: manager.id }))
+
+      expect(response).to have_http_status(:created)
+      expect(response.parsed_body.dig("data", "manager")).to eq(
+        "id" => manager.id, "employee_id" => "EMP100", "name" => "#{manager.first_name} #{manager.last_name}"
+      )
+    end
+  end
+
+  describe "PATCH /api/v1/employees/:id" do
+    let(:arjun) { create(:employee, employee_id: "EMP101", first_name: "Arjun", last_name: "Patel", work_email: "arjun@demo.test") }
+    let(:priya) { create(:employee, employee_id: "EMP102", first_name: "Priya", last_name: "Sharma", work_email: "priya@demo.test") }
+    let(:meera) { create(:employee, employee_id: "EMP103", first_name: "Meera", last_name: "Nair", work_email: "meera@demo.test") }
+
+    def patch_employee(id, body, headers = hr_headers)
+      patch "/api/v1/employees/#{id}", params: body, as: :json, headers:
+    end
+
+    it "allows HR to assign a manager to an employee (TC-S04-01)" do
+      patch_employee(priya.id, { employee: { manager_id: arjun.id } })
+
+      expect(response).to have_http_status(:ok)
+      expect(priya.reload.manager).to eq(arjun)
+      expect(response.parsed_body.dig("data", "manager")).to eq(
+        "id" => arjun.id, "employee_id" => "EMP101", "name" => "Arjun Patel"
+      )
+    end
+
+    it "allows HR to reassign a manager immediately (TC-S04-04)" do
+      priya.update!(manager: arjun)
+      arjun.update!(manager: meera)
+
+      patch_employee(priya.id, { employee: { manager_id: meera.id } })
+
+      expect(response).to have_http_status(:ok)
+      expect(priya.reload.manager).to eq(meera)
+      expect(response.parsed_body.dig("data", "manager", "name")).to eq("Meera Nair")
+    end
+
+    it "allows HR to remove a manager by setting manager_id to nil" do
+      priya.update!(manager: arjun)
+
+      patch_employee(priya.id, { employee: { manager_id: nil } })
+
+      expect(response).to have_http_status(:ok)
+      expect(priya.reload.manager).to be_nil
+      expect(response.parsed_body.dig("data", "manager")).to be_nil
+    end
+
+    it "rejects setting an employee as their own manager with 422 (TC-S04-03)" do
+      patch_employee(priya.id, { employee: { manager_id: priya.id } })
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.dig("error", "code")).to eq("validation_failed")
+      expect(response.parsed_body.dig("error", "details")).to include("Manager cannot be yourself")
+    end
+
+    it "rejects reporting cycles with 422 (TC-S04-02)" do
+      priya.update!(manager: arjun)
+
+      patch_employee(arjun.id, { employee: { manager_id: priya.id } })
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.dig("error", "code")).to eq("validation_failed")
+      expect(response.parsed_body.dig("error", "details")).to include("Manager creates a reporting cycle")
+    end
+
+    it "rejects assigning a non-existent manager with 422 (AC-01)" do
+      patch_employee(priya.id, { employee: { manager_id: 999_999 } })
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body.dig("error", "code")).to eq("validation_failed")
+      expect(response.parsed_body.dig("error", "details")).to include("Manager must exist")
+    end
+
+    it "rejects updates by a manager or standard employee with 403 (AC-06, TC-S04-07)" do
+      priya.update!(manager: arjun)
+      manager_user = create(:user, email: "arjun@demo.test")
+      arjun.update!(user: manager_user)
+      manager_headers = authentication_headers(manager_user)
+
+      patch_employee(priya.id, { employee: { job_title: "Staff Engineer" } }, manager_headers)
+
+      expect(response).to have_http_status(:forbidden)
+      expect(response.parsed_body.dig("error", "code")).to eq("forbidden")
+    end
+
+    it "rejects unauthenticated updates" do
+      patch_employee(priya.id, { employee: { manager_id: arjun.id } }, {})
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(response.parsed_body.dig("error", "code")).to eq("invalid_token")
+    end
+  end
+
+  describe "GET /api/v1/employees/team" do
+    def get_team(headers = hr_headers)
+      get "/api/v1/employees/team", headers:
+    end
+
+    it "returns the manager's subtree employees (AC-04)" do
+      manager_user = create(:user, email: "arjun@demo.test")
+      arjun = create(:employee, employee_id: "EMP101", first_name: "Arjun", user: manager_user)
+      priya = create(:employee, employee_id: "EMP102", first_name: "Priya", manager: arjun)
+      kavita = create(:employee, employee_id: "EMP104", first_name: "Kavita", manager: priya)
+      create(:employee, employee_id: "EMP103", first_name: "John")
+
+      get_team(authentication_headers(manager_user))
+
+      expect(response).to have_http_status(:ok)
+      ids = response.parsed_body["data"].map { |e| e["employee_id"] }
+      expect(ids).to match_array(%w[EMP102 EMP104])
+      expect(ids).not_to include("EMP103")
+      expect(response.parsed_body["data"].first).not_to have_key("bank")
+    end
+
+    it "denies access to a user with no direct reports (AC-05, TC-S04-06)" do
+      emp_user = create(:user, email: "priya@demo.test")
+      create(:employee, user: emp_user)
+
+      get_team(authentication_headers(emp_user))
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "denies access to unauthenticated requests" do
+      get_team({})
+
+      expect(response).to have_http_status(:unauthorized)
     end
   end
 end

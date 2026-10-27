@@ -32,13 +32,14 @@ Base path: `/api/v1`. Requests and responses are JSON.
   "email": "hr@demo.test",
   "role": "HR",
   "country": "India",
-  "employee_id": 1
+  "employee_id": 1,
+  "is_manager": false
 }
 ```
 
 `role` is `HR` or `standard_employee`. Managers are derived from the reporting hierarchy, not stored
 as a role. `employee_id` is the linked employee record id, or `null` when the user has no employee
-record.
+record. `is_manager` is `true` when that employee has at least one direct report.
 
 ## S01 authentication
 
@@ -69,7 +70,8 @@ Success: `200 OK`
       "email": "hr@demo.test",
       "role": "HR",
       "country": "India",
-      "employee_id": null
+      "employee_id": null,
+      "is_manager": false
     }
   }
 }
@@ -114,7 +116,8 @@ Success: `200 OK`
       "email": "hr@demo.test",
       "role": "HR",
       "country": "India",
-      "employee_id": null
+      "employee_id": null,
+      "is_manager": false
     }
   }
 }
@@ -264,9 +267,11 @@ Each changed entitlement writes an `audit_entries` row with the HR actor and
 
 ## S03 Employee records
 
-Employee list and create access is HR only. Profile access is available to HR and to the linked
-employee. The list omits compensation and bank details; compensation is returned by the create
-response. Monetary values are decimal strings with two places.
+Employee list and create access is HR only. Profile access is available to HR, the linked employee,
+and a manager viewing an employee in their reporting subtree. Employee objects include a `manager`
+summary with `id`, `employee_id`, and `name`, or `null`. The list omits compensation and bank
+details; compensation is returned by the create response. Monetary values are decimal strings with
+two places.
 
 ### GET `/api/v1/employees`
 
@@ -289,7 +294,8 @@ Success: `200 OK`
       "job_title": "Software Engineer",
       "start_date": "2026-01-01",
       "status": "active",
-      "department": { "id": 1, "name": "Engineering" }
+      "department": { "id": 1, "name": "Engineering" },
+      "manager": null
     }
   ],
   "meta": { "page": 1, "per_page": 25, "total": 1 }
@@ -301,9 +307,10 @@ Failure: `401 Unauthorized` with code `invalid_token` without a valid access tok
 
 ### GET `/api/v1/employees/:id`
 
-HR can view any employee. A standard employee can view only the record linked to their own user;
-another employee's URL returns `403 Forbidden`. The response includes bank details and the latest
-compensation with its components.
+HR can view any employee. A standard employee can view only the record linked to their own user.
+A manager can view employees in their reporting subtree. Bank details and the latest compensation
+with its components are included only for HR and the linked employee; manager views omit them.
+Any other employee URL returns `403 Forbidden`.
 
 Success: `200 OK`
 
@@ -321,6 +328,7 @@ Success: `200 OK`
     "start_date": "2026-01-01",
     "status": "active",
     "department": { "id": 1, "name": "Engineering" },
+    "manager": null,
     "bank": {
       "bank_name": "HDFC Bank",
       "ifsc": "HDFC0001234",
@@ -395,6 +403,7 @@ Success: `201 Created`
     "start_date": "2026-01-01",
     "status": "active",
     "department": { "id": 1, "name": "Engineering" },
+    "manager": null,
     "compensation": {
       "id": 1,
       "effective_date": "2026-01-01",
@@ -415,3 +424,66 @@ Failures:
   missing/invalid fields, or an empty component list. `details` contains field messages.
 - `401 Unauthorized` with code `invalid_token` without a valid access token.
 - `403 Forbidden` with code `forbidden` for a non-HR user.
+
+## S04 Reporting hierarchy
+
+A manager is an employee with at least one direct report. Managers can read their full reporting
+subtree, but cannot edit assignments or view compensation and bank details for their reports.
+
+### PATCH `/api/v1/employees/:id`
+
+HR only. Updates HR-managed employee fields. For manager assignment, send `manager_id`; send `null`
+to remove the manager. Omitting a field leaves it unchanged.
+
+Request:
+
+```json
+{
+  "employee": {
+    "manager_id": 2
+  }
+}
+```
+
+Success: `200 OK` returns the employee detail, including the `manager` summary.
+
+Failures:
+
+- `422 Unprocessable Content` with code `validation_failed` when the manager does not exist, the
+  employee is set as their own manager, or the assignment creates a reporting cycle. `details`
+  contains the reason.
+- `401 Unauthorized` with code `invalid_token` without a valid access token.
+- `403 Forbidden` with code `forbidden` for a manager or standard employee.
+
+### GET `/api/v1/employees/team`
+
+Manager only. Returns every employee in the manager's reporting subtree, at any depth, ordered by
+`employee_id`. The manager is not included. Bank details and compensation are omitted. A user with
+no direct reports receives `403 Forbidden`.
+
+Success: `200 OK`
+
+```json
+{
+  "data": [
+    {
+      "id": 2,
+      "employee_id": "EMP102",
+      "first_name": "Priya",
+      "last_name": "Sharma",
+      "work_email": "priya@demo.test",
+      "country": "India",
+      "currency": "INR",
+      "job_title": "Product Manager",
+      "start_date": "2026-01-01",
+      "status": "active",
+      "department": { "id": 2, "name": "Product" },
+      "manager": { "id": 1, "employee_id": "EMP101", "name": "Arjun Patel" }
+    }
+  ]
+}
+```
+
+A manager can open a subtree employee with `GET /api/v1/employees/:id`; that response omits bank
+and compensation. Failure: `401 Unauthorized` with code `invalid_token` or `403 Forbidden` with code
+`forbidden`.
