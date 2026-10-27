@@ -523,6 +523,49 @@ As a demo owner, I want a repeatable seed with 10,000 employees, 100 candidates,
 
 ---
 
+## S11a — Organisation tree view
+
+| | |
+|---|---|
+| Epic | People |
+| Priority | P1 |
+| Depends on | S04, S11 |
+| Covers | R-06 (subtree visibility), G2 (working reporting hierarchy) |
+
+**Story**
+As an HR user or manager, I want to explore the reporting hierarchy as a collapsible tree and jump to any employee, so that I can see who reports to whom at 10,000-employee scale.
+
+**Feature**
+- Collapsible, keyboard-navigable tree (ReUI tree on headless-tree, shadcn style; replaced the earlier React Flow canvas on 2026-10-27); one row per employee with initials, name, employee ID, job title, and department; the name links to the profile; employees with reports can be expanded.
+- Lazy loading: the tree starts at the top level (HR: employees without a manager; manager: themselves) and loads a node's direct reports when it is expanded.
+- Focus: search by name or employee ID, or open "View in org chart" from a profile (`/org-chart?focus=<id>`); the manager chain to the top is expanded, the employee is centred and highlighted, and their direct reports are shown.
+- Subtree: "Show only this subtree" (`/org-chart?root=<id>`) starts the tree at that employee; "Show full tree" returns.
+- HR sees everyone; a manager sees only their subtree; other employees cannot open the tree. No salary, CTC, or bank data.
+
+**Acceptance criteria**
+
+- **AC-01** HR opens the tree at the employees without a manager; a manager opens it at themselves.
+- **AC-02** Expanding a card loads only that employee's direct reports, each with their direct-report count.
+- **AC-03** Focusing an employee expands their manager chain within the viewer's scope, highlights them, and shows their direct reports.
+- **AC-04** Rooting the tree at an employee shows only that employee and their subtree.
+- **AC-05** A manager cannot load, focus, or root on anyone outside their subtree; a non-manager employee is denied.
+- **AC-06** Cards never show salary, CTC, or bank details.
+- **AC-07** Expanding a node with many reports and loading a focus path use a bounded number of queries (no N+1).
+
+**Test cases**
+
+| ID | Type | Given | When | Then |
+|---|---|---|---|---|
+| TC-S11a-01 | H | Seeded hierarchy | HR opens the org chart | Top-level cards (Meera, Robert, Carol, and others without a manager) appear with report counts |
+| TC-S11a-02 | H | Meera has direct reports | Expand Meera | Arjun and Meera's other direct reports load beneath her |
+| TC-S11a-03 | H | Priya reports to Arjun, Arjun to Meera | Search "EMP101" | Meera and Arjun are expanded; Priya is highlighted |
+| TC-S11a-04 | H | Focused on Arjun | Choose "Show only this subtree" | Only Arjun and his subtree are shown; "Show full tree" restores the full view |
+| TC-S11a-05 | P | Arjun (manager) signed in | Request Robert's reports or focus on John | Access denied / not found |
+| TC-S11a-06 | P | Priya (no reports) signed in | Open the org chart | Access denied |
+| TC-S11a-07 | PF | 10,000 employees | Expand a manager with 5 reports; focus a level-6 employee | Constant query count per request; focus completes in a few requests |
+
+---
+
 ## S12 — Candidate registration, login, and profile
 
 | | |

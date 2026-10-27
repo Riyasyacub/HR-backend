@@ -42,6 +42,17 @@ class Employee < ApplicationRecord
     self.class.connection.select_values(self.class.sanitize_sql([ query, { id: } ])).map(&:to_i)
   end
 
+  def manager_chain_ids
+    query = <<~SQL.squish
+      WITH RECURSIVE chain AS (
+        SELECT id, manager_id, 0 AS depth FROM employees WHERE id = :id
+        UNION ALL
+        SELECT e.id, e.manager_id, c.depth + 1 FROM employees e INNER JOIN chain c ON e.id = c.manager_id WHERE c.depth < 100
+      ) SELECT id FROM chain ORDER BY depth DESC
+    SQL
+    self.class.connection.select_values(self.class.sanitize_sql([ query, { id: } ])).map(&:to_i)
+  end
+
   def current_compensation(on = Date.current)
     compensations.where(effective_date: ..on).order(effective_date: :desc).first
   end

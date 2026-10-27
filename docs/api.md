@@ -816,3 +816,40 @@ A header problem or a missing default password gives `status: "failed"` with
   "meta": { "row_errors_total": 2, "errors_page": 1, "errors_per_page": 50 }
 }
 ```
+
+## S11a org chart
+
+HR sees everyone; a manager sees themselves and their reporting subtree; other employees get `403`.
+Cards never include salary, CTC, or bank data.
+
+### GET `/api/v1/org_chart`
+
+Without `manager_id`: the top level (HR: employees without a manager; manager: themselves). With
+`manager_id`: that employee's direct reports, if the employee is visible to the viewer, otherwise
+`404`. Sorted by name; `reports_count` is the number of direct reports.
+
+```json
+{
+  "data": [
+    { "id": 3, "employee_id": "EMP103", "name": "Meera Nair", "job_title": "Director",
+      "department": "Engineering", "reports_count": 5 }
+  ]
+}
+```
+
+### GET `/api/v1/org_chart/path`
+
+Query: `employee_id` (the employee's record `id`). Returns the cards from the viewer's top level
+down to that employee, in order (HR: from the employee's top-most manager; manager: from
+themselves). An employee outside the viewer's scope or an unknown ID returns `404`. Used to focus
+the tree on one employee.
+
+```json
+{
+  "data": [
+    { "id": 3, "employee_id": "EMP103", "name": "Meera Nair", "job_title": "Director", "department": "Engineering", "reports_count": 5 },
+    { "id": 2, "employee_id": "EMP102", "name": "Arjun Rao", "job_title": "Engineering Manager", "department": "Engineering", "reports_count": 1 },
+    { "id": 1, "employee_id": "EMP101", "name": "Priya Sharma", "job_title": "Engineer", "department": "Engineering", "reports_count": 0 }
+  ]
+}
+```

@@ -1459,3 +1459,57 @@ Notes: Decisions: server-side row error pagination; @xyflow/react approved; lazy
 > approved, both A and B, add settings link
 
 Notes: S11-10 approved. Added the Settings link to the HR dashboard (App test first; Vitest 149 passed). S11 signed off: scope recorded in docs/product-stories.md (employee import, update import, generator, leave seed; candidates moved to S15); CLAUDE.md and AGENTS.md state S11 complete, S11a next. Committed S11 in both repos (CLAUDE.md untracked). Org tree: both focus-in-full-tree (A) and root-at-employee (B) chosen; S11a story text drafted for review.
+
+### Start S11a-1
+
+> approved, continue to the next chunk
+
+Notes: S11a story and chunk plan approved. Chunk S11a-1: OrgChartNodes query (app/queries/org_chart_nodes.rb; report count subquery, department preload, name order), OrgChartPolicy with Scope (HR all, manager self plus subtree, others none), Api::V1::OrgChartsController#show (top level or direct reports of a visible employee, 404 otherwise), GET /api/v1/org_chart, docs/api.md S11a section. Specs: spec/requests/api/v1/org_chart_spec.rb (6, incl. constant query count). Red confirmed (5 failing); one spec fixed for factory ID collisions. RSpec 384/0, RuboCop clean, Brakeman 0. Production lines about 40.
+
+### Continue S11a-2
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11a-2. Employee#manager_chain_ids (recursive CTE, top first, depth guard 100); OrgChartsController#path (visible employee or 404, chain limited to visible ids so a manager's path starts at themselves); OrgChartNodes ordered_ids option; OrgChartPolicy#path?; GET /api/v1/org_chart/path; docs/api.md. Specs: org_chart_spec path (4, incl. constant query count by depth). Red confirmed (3 failing). RSpec 388/0, RuboCop clean, Brakeman 0. Production lines about 25.
+
+### Continue S11a-3
+
+> approved, continue to the next chunk
+
+Notes: Installed @xyflow/react ^12.12.0 (approved; 0 vulnerabilities). Split into S11a-3a and S11a-3b. Chunk S11a-3a (frontend): src/api/orgChart.ts (getOrgChart, getOrgChartPath, OrgNode) and src/lib/orgTreeLayout.ts (expanded-subtree layout: leaves spaced by CARD_GAP_X, parents centred over children, rows by CARD_GAP_Y, edges). Tests: api (1), layout (4). Red confirmed. Vitest 154 passed, typecheck and lint clean. Production lines about 40.
+
+### Continue S11a-3b
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11a-3b (frontend). New src/components/OrgCard.tsx (React Flow node: profile link, ID/title/department, Show N reports / Hide reports) and src/pages/OrgChartPage.tsx (ReactFlow canvas with Background, Controls, MiniMap; loads top level, lazy-loads reports once per card, collapse/expand, errors); /org-chart route for HR and managers; dashboard Org chart link. Tests: OrgCard (3), OrgChartPage (3, React Flow stubbed for jsdom), App routing (1). Red confirmed. Vitest 161 passed, typecheck and lint clean; vite build ok (main bundle 528 kB, 165 kB gzip; over Vite's 500 kB warning). Production lines about 72 (over the limit).
+
+### Continue S11a-4
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11a-4 (frontend). New src/components/OrgSearch.tsx (Find employee via scoped employee search, up to 10 matches, selecting sets ?focus); OrgChartPage reads ?focus, loads the path and the reports of each manager on it, expands the chain, highlights the employee (OrgCard aria-current ring) and centres with React Flow fitView. Tests: OrgCard (+1), OrgChartPage (+2). Red confirmed (3 failing). Vitest 164 passed, typecheck and lint clean, build ok. Production lines about 50.
+
+### Use the ReUI tree component
+
+> use this library "pnpm dlx shadcn@latest add @reui/c-tree-6"
+
+Notes: In progress. Inspecting the registry item before adding it.
+
+### Replace the canvas with the ReUI tree
+
+> 1A, 2 yes, 3 yes, S11a-4 approved
+
+Notes: Decisions: replace the React Flow canvas with the ReUI collapsible tree (remove @xyflow/react and the canvas layout code); install with npx shadcn instead of pnpm; adapt the pattern into our own component with initials only and delete the example file. S11a-4 approved. Chunk S11a-5 (frontend): npx shadcn add @reui/c-tree-6 added @headless-tree/core and @headless-tree/react ^1.8.0, src/components/reui/tree.tsx, avatar, and the @reui registry in components.json; the CLI wrote avatar into a literal @/ folder (moved to src/components/ui; it was deleted once by mistake and regenerated); example file removed. Removed @xyflow/react, OrgCard, orgTreeLayout and their tests. New OrgChartPage on the ReUI Tree with the async data loader (top level on load, reports on first expand), initials avatar, profile links, focus via ?focus (expands the chain, aria-current, scrolls into view), search. S11a story text updated (canvas -> collapsible tree). Tests: OrgChartPage rewritten (5). Red confirmed. Vitest 156 passed, typecheck and lint clean, build ok (378 kB, warning gone). Production lines about 70 hand-written (generated tree/avatar excluded).
+
+### Continue S11a-6
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11a-6 (frontend). OrgChartPage split into a page shell and an OrgTree component keyed by root: ?root=<id> loads only that employee (last item of the scoped path) as the top level; Show only this subtree / Show full tree switch between ?focus and ?root. EmployeeProfilePage shows View in org chart (/org-chart?focus=<id>) to HR and managers. Tests: OrgChartPage (+2), EmployeeProfilePage (+1). Red confirmed (3 failing). Vitest 159 passed, typecheck and lint clean, build ok; RSpec 388/0. Production lines about 20 changed (mostly moved code).
+
+### Commit S11a
+
+> commit
+
+Notes: S11a signed off (smoke pack deferred to the end). CLAUDE.md and AGENTS.md current state: S11a complete, S12 next. Committed S11a in both repos (CLAUDE.md stays untracked).
