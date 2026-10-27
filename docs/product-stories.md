@@ -2,14 +2,14 @@
 
 | Field | Value |
 |---|---|
-| Version | 1.0 |
-| Date | 2026-10-24 |
-| Source | `docs/requirements.md` v0.3 |
+| Version | 1.1 |
+| Date | 2026-10-27 |
+| Source | `docs/requirements.md` v0.4 |
 | Status | Ready for build |
 
 ## How to use this document
 
-- Stories are numbered **S01–S22** and must be built and tested **in order**. Each story assumes every earlier story is complete and its tests pass.
+- Stories are numbered **S01–S19** and must be built and tested **in order**. Each story assumes every earlier story is complete and its tests pass.
 - Every story delivers one testable feature slice, lists its acceptance criteria, and includes its test cases.
 - Test case IDs use `TC-S<story>-<number>`. Types: **H** happy path, **N** negative, **E** edge, **P** permission, **I** integration, **PF** performance.
 - Test data is created progressively: accounts and records from earlier stories are reused by later stories.
@@ -23,24 +23,21 @@
 | S02 | HR configuration: countries, departments, leave types | Foundation | S01 |
 | S03 | Create and manage employee records | People | S02 |
 | S04 | Reporting hierarchy and manager scope | People | S03 |
-| S05 | Employee self-service, directory, and change history | People | S04 |
-| S06 | Employee Excel import with compensation | People | S04 |
-| S07 | Candidate registration, login, and profile | Hiring | S01 |
-| S08 | Job openings | Hiring | S07 |
-| S09 | Job applications | Hiring | S08 |
-| S10 | Recruitment pipeline, interviews, and offers | Hiring | S09 |
-| S11 | Convert a hired candidate to an employee | Hiring | S10, S03 |
-| S12 | Onboarding checklist, invite, and activation | Onboarding | S11 |
-| S13 | Leave balances and ledger | Leave | S12 |
-| S14 | Leave request submission | Leave | S13 |
-| S15 | Hierarchy-based leave approval and team calendar | Leave | S14 |
-| S16 | Attendance CSV import | Attendance | S12 |
-| S17 | Attendance exceptions and reconciliation | Attendance | S16, S15 |
-| S18 | Monthly payroll run | Payroll | S15, S17 |
-| S19 | Payroll Excel export and history | Payroll | S18 |
-| S20 | Offboarding and access deactivation | Offboarding | S12, S19 |
-| S21 | Reporting dashboards and exports | Reporting | S20 |
-| S22 | Demo seed data and scale verification | Demo readiness | S21 |
+| S05 | Employee self-service and directory | People | S04 |
+| S06 | Leave CSV upload (overnight) | Leave | S04, S05 |
+| S07 | Attendance CSV upload (overnight) | Attendance | S06 |
+| S08 | Monthly payroll run | Payroll | S06, S07 |
+| S09 | Payroll Excel export and history | Payroll | S08 |
+| S10 | Reporting dashboards and exports | Reporting | S08, S09 |
+| S11 | Demo seed data and scale verification | Demo readiness | S10 |
+| S12 | Candidate registration, login, and profile | Hiring | S01 |
+| S13 | Job openings | Hiring | S12 |
+| S14 | Job applications | Hiring | S13 |
+| S15 | Recruitment pipeline, interviews, and offers | Hiring | S14 |
+| S16 | Convert a hired candidate to an employee | Hiring | S15, S03, S04 |
+| S17 | Onboarding checklist, invite, and activation | Onboarding | S16 |
+| S18 | Offboarding and access deactivation | Offboarding | S17, S09 |
+| S19 | Employee change history (deferred from S05) | People | S18 |
 
 ## Test accounts and fixtures used throughout
 
@@ -54,15 +51,11 @@
 | `john@demo.test` | Employee (USA, reports to Robert) | Used for payroll tests |
 | `carol@demo.test` | Manager (Canada) | One direct report: Emily |
 | `emily@demo.test` | Employee (Canada, reports to Carol) | Used for offboarding tests |
-| `nisha@example.test` / `Candidate@123` | Candidate | Registered in S07 |
+| `nisha@example.test` / `Candidate@123` | Candidate | Registered in S12 |
 
-Fixtures: `employees_sample.xlsx`, `employees_invalid.xlsx`, `attendance_sample.csv`,
-`resume.pdf`, `offer_letter.pdf`. The final employee and attendance formats are confirmed when
-S06 and S16 are implemented (per requirements §13).
+Fixtures: `leave_sample.csv`, `leave_invalid.csv`, `attendance_sample.csv`, `attendance_invalid.csv`, `resume.pdf`, `offer_letter.pdf`. The final leave and attendance CSV formats are confirmed when S06 and S07 are implemented (per requirements §13).
 
-All demo accounts use `Demo@1234` unless noted. The bootstrap creates the authentication user and a
-minimal employee record (name, country, department, status, sample CTC/components, and bank details)
-so authentication and later stories have stable data. Stories S03–S06 add new records on top of it.
+All demo accounts use `Demo@1234` unless noted. The bootstrap creates the authentication user and a minimal employee record (name, country, department, status, sample CTC/components, and bank details) so authentication and later stories have stable data. Stories S03–S06 add new records on top of it.
 
 ---
 
@@ -76,11 +69,10 @@ so authentication and later stories have stable data. Stories S03–S06 add new 
 | Covers | XC-03, NFR-04, NFR-05 |
 
 **Story**
-As an HR user or employee, I want to sign in with my credentials and land on the correct dashboard,
-so that I only see the data my role allows.
+As an HR user or employee, I want to sign in with my credentials and land on the correct dashboard, so that I only see the data my role allows.
 
 **Feature**
-- Email and password authentication for HR and employees (candidates added in S07).
+- Email and password authentication for HR and employees (candidates added in S12).
 - Role-aware landing page: HR dashboard vs employee dashboard.
 - Logout, session expiry after 8 hours of inactivity, and denial of direct URL access to other roles' pages.
 - Passwords stored with a modern hash.
@@ -117,8 +109,7 @@ so that I only see the data my role allows.
 | Covers | XC-10, EMP-05, LVE-01, R-16, R-17 |
 
 **Story**
-As an HR user, I want to maintain the fixed country list, departments, and leave types, so that
-employee and leave records use consistent values.
+As an HR user, I want to maintain the fixed country list, departments, and leave types, so that employee and leave records use consistent values.
 
 **Feature**
 - Read-only country reference data: India → INR, USA → USD, Canada → CAD.
@@ -157,8 +148,7 @@ employee and leave records use consistent values.
 | Covers | EMP-01, EMP-05, EMP-07, EMP-08, EMP-10, DR-04, DR-05, DR-08 |
 
 **Story**
-As an HR user, I want to create an employee with personal, job, compensation, and bank details, so
-that the employee has one authoritative record.
+As an HR user, I want to create an employee with personal, job, compensation, and bank details, so that the employee has one authoritative record.
 
 **Feature**
 - Manual employee creation with required fields: employee ID, first/last name, work email, country, department, job title, start date, at least one compensation component, bank name, account number, status.
@@ -200,8 +190,7 @@ that the employee has one authoritative record.
 | Covers | XC-02, EMP-03, EMP-04, R-01 to R-06, R-14 |
 
 **Story**
-As an HR user, I want to assign managers and maintain a hierarchy, so that teams, visibility, and
-leave approvals follow the reporting line.
+As an HR user, I want to assign managers and maintain a hierarchy, so that teams, visibility, and leave approvals follow the reporting line.
 
 **Feature**
 - Assign, change, and remove a direct manager.
@@ -233,24 +222,22 @@ leave approvals follow the reporting line.
 
 ---
 
-## S05 — Employee self-service, directory, and change history
+## S05 — Employee self-service and directory
 
 | | |
 |---|---|
 | Epic | People |
 | Priority | P0 |
 | Depends on | S04 |
-| Covers | EMP-05, EMP-06, EMP-11, XC-07, XC-09 |
+| Covers | EMP-05, EMP-06, EMP-11, XC-07 |
 
 **Story**
-As an employee, I want to maintain my contact details and find colleagues in the directory, and as
-HR I want to see who changed what, so that records stay accurate and traceable.
+As an employee, I want to maintain my contact details and find colleagues in the directory, so that records stay accurate.
 
 **Feature**
 - Employee self-service for phone, personal email, address, and emergency contact.
 - Read-only employee ID, work email, job, compensation, and bank data.
 - Directory with search and filters by country, department, manager, and status.
-- Change history with actor, timestamp, field, old value, and new value.
 - Permission-aware directory results.
 
 **Acceptance criteria**
@@ -258,7 +245,7 @@ HR I want to see who changed what, so that records stay accurate and traceable.
 - **AC-01** Self-service changes save immediately and are visible to HR.
 - **AC-02** Employee ID, work email, compensation, bank, and hierarchy fields cannot be edited by the employee.
 - **AC-03** Directory filters return exactly the matching employees and respect the viewer's scope.
-- **AC-04** Every field change creates an audit entry showing old and new values.
+- **AC-04** Moved to S19 (employee change history).
 - **AC-05** Salary, CTC, and bank details never appear in directory cards, search results, or manager views.
 - **AC-06** A manager's directory view is limited to their subtree.
 
@@ -270,57 +257,291 @@ HR I want to see who changed what, so that records stay accurate and traceable.
 | TC-S05-02 | N | Signed in as Priya | Try to change work email | Field is read-only and the request is rejected |
 | TC-S05-03 | H | Employees exist in India, USA, Canada | Filter directory by country = USA | Only USA employees are listed |
 | TC-S05-04 | H | Directory has 20+ employees | Search by partial name | Matching employees are returned, scoped to the viewer |
-| TC-S05-05 | H | HR changes Priya's department | Open change history | Entry shows actor, timestamp, old department, new department |
+| TC-S05-05 | — | Moved to S19 as TC-S19-01 | — | — |
 | TC-S05-06 | P | Signed in as Arjun (manager) | Open directory | Only Arjun's subtree is listed |
 | TC-S05-07 | P | Signed in as Priya | Search directory | Salary and bank columns are absent; other employees are limited to directory fields |
 
 ---
 
-## S06 — Employee Excel import with compensation
+## S06 — Leave CSV upload (overnight)
 
 | | |
 |---|---|
-| Epic | People |
+| Epic | Leave |
 | Priority | P0 |
-| Depends on | S04 |
-| Covers | EMP-01, EMP-02, EMP-07, EMP-08, XC-06, NFR-02 |
+| Depends on | S04, S05 |
+| Covers | LVE-01 to LVE-14, BR-LVE-01 to BR-LVE-07 |
 
 **Story**
-As an HR user, I want to import employees and their CTC breakup from Excel, so that the existing
-workbook becomes the initial source of records.
+As an HR user, I want to upload a leave CSV overnight so that balances, requests, and approvals are processed without an interactive leave UI.
 
 **Feature**
-- Downloadable workbook template with an `Employees` sheet and a `Compensation` sheet.
-- Upload, preview, validate, and import with a row-level error report.
-- Manager references resolved in a second pass, including managers in the same file.
-- Duplicate employee IDs or work emails rejected per row; valid rows still import.
-- Bank name, IFSC, and account number imported from the employee sheet.
+- CSV format: employee ID, leave type, start date, end date, reason, status.
+- Upload with header validation, row validation, and import summary.
+- Unknown employee IDs, invalid dates, overlapping requests, and insufficient balances reported per row.
+- Approved leave reduces balances; rejected leave does not.
+- Unpaid leave has no balance and is flagged for payroll deduction.
+- Working-day calculation (Monday–Friday, no holidays).
+- Only HR can import.
+- Re-upload updates existing leave records rather than duplicating.
 
 **Acceptance criteria**
 
-- **AC-01** The template contains all required employee columns and the compensation component columns documented in requirements §9.
-- **AC-02** Preview lists creates and errors without writing to the database.
-- **AC-03** Importing a valid file creates every employee with the correct country, currency, manager, CTC, components, and bank details.
-- **AC-04** Invalid rows are skipped and listed with row number and reason; valid rows are imported.
-- **AC-05** Importing a manager and their report in the same file resolves the hierarchy correctly.
-- **AC-06** Re-importing the same file does not create duplicates for rejected rows; existing IDs are reported as duplicates.
-- **AC-07** Only HR can access import.
+- **AC-01** A valid leave CSV imports all rows and reports the count.
+- **AC-02** Missing or malformed columns reject the file with a clear message.
+- **AC-03** Unknown employee IDs, invalid timestamps, overlaps, and insufficient balances are reported per row; valid rows import.
+- **AC-04** Approved earned/sick/casual leave reduces the remaining balance; rejected leave leaves it unchanged.
+- **AC-05** Unpaid leave has no balance, cannot be over-drawn, and is flagged for payroll deduction.
+- **AC-06** Re-uploading the same employee/date updates the record instead of creating a duplicate.
+- **AC-07** Leave records respect the viewer's scope: employees see their own, managers see their subtree, HR sees all.
+- **AC-08** Only HR can access leave import.
 
 **Test cases**
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S06-01 | H | Signed in as HR; template downloaded | Upload `employees_sample.xlsx` with 5 valid rows | Preview shows 5 creates; import succeeds; 5 employees exist |
-| TC-S06-02 | N | File has a row missing work email | Upload and preview | Row 3 is listed with "work email required"; no record is written for it |
-| TC-S06-03 | E | File contains a new manager and a report in the same workbook | Import the file | Both are created and the report's manager is the new manager |
-| TC-S06-04 | N | File contains an employee ID that already exists | Import | That row is reported as a duplicate; other valid rows import |
-| TC-S06-05 | H | File includes compensation components Basic and Allowance | Import | Employee's monthly gross derives from both components |
-| TC-S06-06 | H | File includes bank fields for a Canadian employee | Import | Bank name, account number, and blank IFSC are stored; currency is CAD |
-| TC-S06-07 | P | Signed in as Arjun (manager) | Open the import page or POST an import | Access denied |
+| TC-S06-01 | H | `leave_sample.csv` with 5 valid rows | Upload | 5 records imported; summary shows 5 succeeded |
+| TC-S06-02 | N | CSV header missing "status" | Upload | File rejected with a header error; no rows imported |
+| TC-S06-03 | E | Row for employee `EMP999` who does not exist | Upload | Row rejected with "unknown employee"; other rows import |
+| TC-S06-04 | N | Row where end date is before start date | Upload | Row rejected with a date-order error |
+| TC-S06-05 | N | Priya has 1 earned day remaining; file requests 3 earned days | Upload | Row rejected for insufficient balance |
+| TC-S06-06 | H | Priya requests unpaid leave for 3 days | Upload | Accepted; no balance row; flagged for payroll deduction |
+| TC-S06-07 | E | Same file uploaded again | Upload | Records update; total count does not grow |
+| TC-S06-08 | P | Priya signed in | Upload a CSV | Access denied; data unchanged |
+| TC-S06-09 | P | Arjun signed in | Open John's leave record (outside his subtree) | Access denied |
 
 ---
 
-## S07 — Candidate registration, login, and profile
+## S07 — Attendance CSV upload (overnight)
+
+| | |
+|---|---|
+| Epic | Attendance |
+| Priority | P0 |
+| Depends on | S06 |
+| Covers | ATT-01 to ATT-09, BR-ATT-01 to BR-ATT-04 |
+
+**Story**
+As an HR user, I want to upload attendance CSV files overnight so that attendance data arrives from devices and conflicts with approved leave are surfaced before payroll.
+
+**Feature**
+- CSV format: employee ID, first-in timestamp, last-out timestamp.
+- Upload with header validation, row validation, and import summary.
+- Re-upload updates the same employee/date rather than duplicating.
+- Exception detection: missing first-in or last-out, no attendance on a working day without approved leave, attendance on approved leave.
+- HR correction with a reason; exception review/waive.
+- Records visible to the employee and their manager subtree; HR sees all.
+- Only HR can import.
+
+**Acceptance criteria**
+
+- **AC-01** A valid attendance CSV imports all rows and reports the count.
+- **AC-02** Missing or malformed columns reject the file with a clear message.
+- **AC-03** Unknown employee IDs and invalid timestamps are reported per row; valid rows import.
+- **AC-04** Row where last out is earlier than first in is rejected with a time-order error.
+- **AC-05** Re-uploading the same employee and date updates the record instead of creating a duplicate.
+- **AC-06** Employees see their own attendance; managers see their subtree; HR sees all.
+- **AC-07** Import is restricted to HR.
+- **AC-08** Exceptions are detected and listed per date with type and employee.
+
+**Test cases**
+
+| ID | Type | Given | When | Then |
+|---|---|---|---|---|
+| TC-S07-01 | H | `attendance_sample.csv` with 3 valid rows for Priya, Arjun, John | Upload | 3 records imported; summary shows 3 succeeded |
+| TC-S07-02 | N | CSV header missing "Last Out" | Upload | File rejected with a header error; no rows imported |
+| TC-S07-03 | E | Row for employee `EMP999` who does not exist | Upload | Row rejected with "unknown employee"; other rows import |
+| TC-S07-04 | N | Row where Last Out is earlier than First In | Upload | Row rejected with a time-order error |
+| TC-S07-05 | E | Same file uploaded again | Upload | Records update; total count does not grow |
+| TC-S07-06 | P | Priya signed in | Upload a CSV | Access denied; data unchanged |
+| TC-S07-07 | P | Arjun signed in | Open John's attendance (outside his subtree) | Access denied |
+
+---
+
+## S08 — Monthly payroll run
+
+| | |
+|---|---|
+| Epic | Payroll |
+| Priority | P0 |
+| Depends on | S06, S07 |
+| Covers | PAY-01 to PAY-05, PAY-09, PAY-11, BR-PAY-01 to BR-PAY-08 |
+
+**Story**
+As an HR user, I want to prepare a monthly payroll run from CTC, unpaid leave (from CSV uploads), and manual adjustments, so that the payout amounts are complete and validated before export.
+
+**Feature**
+- Select a month and create a draft run for all `active`/`notice` employees.
+- Monthly gross = sum of annual components ÷ 12.
+- Automatic unpaid-leave deduction using working days in the month (from CSV-uploaded leave data).
+- Manual adjustments with descriptions.
+- Blocking validation for missing bank name, account number, or components; annual CTC is derived from the component sum.
+- Review totals by employee, country, currency; no tax or other deductions.
+- Only HR can create, edit, or export a payroll run.
+
+**Acceptance criteria**
+
+- **AC-01** The run includes `active` and `notice` employees and excludes `exited` employees.
+- **AC-02** Monthly gross equals the sum of components divided by 12, rounded to two decimals.
+- **AC-03** Unpaid leave days in the month produce the deduction `(monthly gross ÷ working days) × unpaid days`.
+- **AC-04** Adjustments are added or subtracted with a description and appear in the total.
+- **AC-05** Export-blocking data issues are listed and prevent approval.
+- **AC-06** The run cannot be created or edited by non-HR users.
+- **AC-07** No tax, statutory deduction, benefit, or payslip value is calculated.
+
+**Test cases**
+
+| ID | Type | Given | When | Then |
+|---|---|---|---|---|
+| TC-S08-01 | H | Active employees with CTC and components exist | Create a run for November 2026 | Draft run lists all active employees with monthly gross |
+| TC-S08-02 | H | Priya's CTC is 1,200,000 (Basic 1,200,000) | Open her payroll line | Monthly gross is 100,000.00 |
+| TC-S08-03 | H | Priya has 2 unpaid leave days in a month with 20 working days | Add to the run | Deduction is 10,000.00 (100,000 ÷ 20 × 2) |
+| TC-S08-04 | H | HR adds a bonus adjustment of 5,000 | Save | Total = gross − unpaid deduction + 5,000; description shown |
+| TC-S08-05 | N | Employee has no bank account number | Attempt to approve/export | Blocked; the employee is listed as missing bank details |
+| TC-S08-06 | E | Components total 1,000,000 but CTC is 1,200,000 | Create run | Warning shown; HR must resolve before export |
+| TC-S08-07 | H | Draft run exists | Filter/summarise by country and currency | Totals reconcile with employee lines; no conversion across currencies |
+| TC-S08-08 | P | Arjun (manager) signed in | Create or edit a payroll run | Access denied |
+
+---
+
+## S09 — Payroll Excel export and history
+
+| | |
+|---|---|
+| Epic | Payroll |
+| Priority | P0 |
+| Depends on | S08 |
+| Covers | PAY-06 to PAY-08, PAY-10, BR-PAY-06 |
+
+**Story**
+As an HR user, I want to export the approved monthly payroll to Excel and re-download past runs, so that Finance can pay employees from one file.
+
+**Feature**
+- Generate XLSX with the documented columns, including bank name, IFSC, account number, gross, unpaid deduction, adjustments, total, pay period.
+- Generated runs are immutable; re-download returns the same content.
+- Status: draft → generated → paid.
+- Export and status changes are audit-logged.
+- Only HR can export.
+
+**Acceptance criteria**
+
+- **AC-01** Export is available only for a complete run with no blocking issues.
+- **AC-02** The file contains every required column and one row per included employee.
+- **AC-03** Amounts and bank details in the file match the review screen.
+- **AC-04** After generation, the run is locked; edits are rejected.
+- **AC-05** A generated run can be re-downloaded with identical content and marked paid.
+- **AC-06** Export and paid status are recorded in the audit history.
+- **AC-07** Only HR can export.
+
+**Test cases**
+
+| ID | Type | Given | When | Then |
+|---|---|---|---|---|
+| TC-S09-01 | H | Approved draft run | Export XLSX | File downloads and opens; headers match the specification |
+| TC-S09-02 | H | Exported file | Compare Priya's row | Bank name, IFSC, account number, gross, deduction, adjustment, total, period are correct |
+| TC-S09-03 | N | Export completed | Attempt to edit the run | Edit rejected; run is immutable |
+| TC-S09-04 | H | Generated run exists | Re-download | Content identical (same amounts and rows) |
+| TC-S09-05 | H | Generated run exists | Mark as paid with a date | Status becomes paid; date recorded |
+| TC-S09-06 | H | Export performed | Open audit history | Export actor, timestamp, and paid status are listed |
+| TC-S09-07 | P | Priya signed in | Request the payroll export URL | Access denied |
+
+---
+
+## S10 — Reporting dashboards and exports
+
+| | |
+|---|---|
+| Epic | Reporting |
+| Priority | P0 |
+| Depends on | S08, S09 |
+| Covers | RPT-01 to RPT-12, BR-RPT-01 to BR-RPT-03 |
+
+**Story**
+As an HR user or manager, I want standard reports and dashboards, so that I can answer headcount, attrition, leave, attendance, payroll, and hiring questions without Excel.
+
+**Feature**
+- HR dashboard: headcount, joiners/leavers, pending approvals, payroll status, attendance exceptions.
+- Reports: headcount by country/department/manager/status, joiners and leavers, attrition, leave balances and usage, attendance exceptions, payroll totals by month/country/currency, recruitment pipeline.
+- Manager dashboard scoped to subtree.
+- Filters and CSV/XLSX export; permission-safe.
+- No salary or bank data for managers or candidates.
+
+**Acceptance criteria**
+
+- **AC-01** Headcount reconciles with the employee list for the same filters.
+- **AC-02** Joiners/leavers show the correct dates and count.
+- **AC-03** Attrition equals leavers ÷ average of opening and closing headcount, with the formula visible.
+- **AC-04** Leave and attendance reports reconcile with their source records.
+- **AC-05** Payroll totals reconcile with generated runs and are grouped by currency without conversion.
+- **AC-06** Managers see only their subtree; candidates cannot access reports.
+- **AC-07** Exports match the on-screen filtered results and are audit-logged.
+- **AC-08** Salary, CTC, and bank details never appear in manager or candidate output.
+
+**Test cases**
+
+| ID | Type | Given | When | Then |
+|---|---|---|---|---|
+| TC-S10-01 | H | Employees across three countries | Filter headcount by country | Counts match the filtered employee list |
+| TC-S10-02 | H | One joiner and one leaver in November | Open joiners/leavers | Lists show both with correct dates |
+| TC-S10-03 | H | Opening headcount 20, closing 18, 4 leavers | Open attrition | Value is 4 ÷ 19 = 21.05%, formula visible |
+| TC-S10-04 | H | Leave and attendance data exist | Open leave and attendance reports | Totals match balances, requests, and exceptions |
+| TC-S10-05 | H | Payroll runs exist | Open payroll totals | Totals match runs, grouped by currency |
+| TC-S10-06 | H | Recruitment data exists | Open pipeline report | Counts match openings and applications |
+| TC-S10-07 | P | Arjun (manager) signed in | Open HR dashboard and a report for John (USA) | HR dashboard denied; only his subtree report is visible |
+| TC-S10-08 | P | Nisha (candidate) signed in | Open any report URL | Access denied |
+| TC-S10-09 | H | Headcount report filtered to India | Export XLSX | File rows and totals match the filtered list |
+| TC-S10-10 | P | Arjun signed in | Export a report | No salary, CTC, or bank columns are present |
+
+---
+
+## S11 — Demo seed data and scale verification
+
+| | |
+|---|---|
+| Epic | Demo readiness |
+| Priority | P0 |
+| Depends on | S10 |
+| Covers | NFR-16, NFR-17, NFR-02, G1, G6 |
+
+**Story**
+As a demo owner, I want a repeatable seed with 10,000 employees, 100 candidates, and two months of attendance, so that the product can be demonstrated and performance-tested at realistic scale.
+
+**Feature**
+- Faker-based seed script with a default size of 10,000 employees and 100 candidates.
+- Multi-level hierarchy across India, USA, and Canada; country-appropriate currencies.
+- 100 candidates with applications in different stages (Applied, Screening, Interview, Offer, Hired, Rejected).
+- Two months of attendance for active employees.
+- Idempotent re-run (no duplicates), clear prefixes for seeded records, and a runtime target.
+- Sample login accounts for demo roles.
+
+**Acceptance criteria**
+
+- **AC-01** A single command seeds 10,000 employees, 100 candidates, and attendance for the last two months.
+- **AC-02** Employees span India, USA, and Canada with the correct currencies and a hierarchy at least three levels deep.
+- **AC-03** Candidates have applications distributed across all pipeline stages.
+- **AC-04** Attendance covers working days for the last two months for active employees.
+- **AC-05** Re-running the seed does not duplicate records.
+- **AC-06** The full seed completes within 15 minutes.
+- **AC-07** Sample HR, manager, employee, and candidate accounts can sign in.
+- **AC-08** Headcount reporting reflects the seeded population after the run.
+
+**Test cases**
+
+| ID | Type | Given | When | Then |
+|---|---|---|---|---|
+| TC-S11-01 | H | Clean development database | Run the seed command | Command completes successfully; summary reports 10,000 employees and 100 candidates |
+| TC-S11-02 | H | Seed completed | Count employees by country | All three countries present; INR, USD, CAD assigned correctly |
+| TC-S11-03 | H | Seed completed | Inspect hierarchy | At least three levels exist; no cycles; every manager is an employee |
+| TC-S11-04 | H | Seed completed | Open recruitment pipeline | Applications exist in every stage |
+| TC-S11-05 | H | Seed completed | Check attendance coverage | Active employees have attendance for working days in the last two months |
+| TC-S11-06 | E | Seed already run | Run the seed again | No duplicate employee IDs, candidates, or attendance rows; counts unchanged |
+| TC-S11-07 | PF | Clean database | Time the seed run | Completes in under 15 minutes |
+| TC-S11-08 | H | Seed completed | Sign in with each sample account | HR, manager, employee, and candidate land on their correct dashboards |
+| TC-S11-09 | H | Seed completed | Open headcount report | Reported total matches 10,000 (plus non-seed demo records) |
+
+---
+
+## S12 — Candidate registration, login, and profile
 
 | | |
 |---|---|
@@ -330,8 +551,7 @@ workbook becomes the initial source of records.
 | Covers | REC-02, REC-03, REC-04, XC-03, NFR-04, R-08 |
 
 **Story**
-As a candidate, I want to register and sign in to my own account, so that I can apply for roles and
-track my applications.
+As a candidate, I want to register and sign in to my own account, so that I can apply for roles and track my applications.
 
 **Feature**
 - Candidate self-registration with name, email, phone, country, and password.
@@ -352,27 +572,26 @@ track my applications.
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S07-01 | H | No candidate with `nisha@example.test` | Register Nisha Rao with valid details | Candidate record created; signed in; candidate dashboard shown |
-| TC-S07-02 | N | Nisha is registered | Register again with `nisha@example.test` | "Email already registered" error; no second record |
-| TC-S07-03 | H | Nisha registered | Sign in with correct password | Candidate dashboard loads with profile access |
-| TC-S07-04 | I | Nisha registered | Request password reset | Email appears in the local mail catcher; link sets a new password; the link cannot be reused |
-| TC-S07-05 | P | Signed in as Nisha | Open `/employees` or an HR page | Access denied |
-| TC-S07-06 | N | Signed in as Nisha | Attempt to change email | Field is read-only and the request is rejected |
+| TC-S12-01 | H | No candidate with `nisha@example.test` | Register Nisha Rao with valid details | Candidate record created; signed in; candidate dashboard shown |
+| TC-S12-02 | N | Nisha is registered | Register again with `nisha@example.test` | "Email already registered" error; no second record |
+| TC-S12-03 | H | Nisha registered | Sign in with correct password | Candidate dashboard loads with profile access |
+| TC-S12-04 | I | Nisha registered | Request password reset | Email appears in the local mail catcher; link sets a new password; the link cannot be reused |
+| TC-S12-05 | P | Signed in as Nisha | Open `/employees` or an HR page | Access denied |
+| TC-S12-06 | N | Signed in as Nisha | Attempt to change email | Field is read-only and the request is rejected |
 
 ---
 
-## S08 — Job openings
+## S13 — Job openings
 
 | | |
 |---|---|
 | Epic | Hiring |
 | Priority | P0 |
-| Depends on | S07 |
+| Depends on | S12 |
 | Covers | REC-01, REC-11 |
 
 **Story**
-As an HR user, I want to create and manage job openings, so that candidates can see and apply for
-current roles.
+As an HR user, I want to create and manage job openings, so that candidates can see and apply for current roles.
 
 **Feature**
 - Job opening create/edit with title, country, department, description, and status (open/closed).
@@ -392,22 +611,22 @@ current roles.
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S08-01 | H | Signed in as HR | Create "Software Engineer", India, Engineering, open | Opening is saved and listed |
-| TC-S08-02 | H | Signed in as HR | Edit the description | Change is saved and visible on the detail page |
-| TC-S08-03 | H | Opening is open | Change status to closed | Opening disappears from the candidate list |
-| TC-S08-04 | H | Two openings, one closed | Sign in as Nisha and open the openings list | Only the open opening is listed |
-| TC-S08-05 | P | Signed in as Nisha | POST to create an opening | Request denied |
-| TC-S08-06 | P | Signed in as Nisha | Open a closed opening's URL directly | Not found or closed message; no apply action |
+| TC-S13-01 | H | Signed in as HR | Create "Software Engineer", India, Engineering, open | Opening is saved and listed |
+| TC-S13-02 | H | Signed in as HR | Edit the description | Change is saved and visible on the detail page |
+| TC-S13-03 | H | Opening is open | Change status to closed | Opening disappears from the candidate list |
+| TC-S13-04 | H | Two openings, one closed | Sign in as Nisha and open the openings list | Only the open opening is listed |
+| TC-S13-05 | P | Signed in as Nisha | POST to create an opening | Request denied |
+| TC-S13-06 | P | Signed in as Nisha | Open a closed opening's URL directly | Not found or closed message; no apply action |
 
 ---
 
-## S09 — Job applications
+## S14 — Job applications
 
 | | |
 |---|---|
 | Epic | Hiring |
 | Priority | P0 |
-| Depends on | S08 |
+| Depends on | S13 |
 | Covers | REC-02, REC-04, XC-08 |
 
 **Story**
@@ -433,27 +652,26 @@ As a candidate, I want to apply to an open role with my CV, so that HR can revie
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S09-01 | H | Nisha signed in; Software Engineer opening is open | Apply with `resume.pdf` | Application created in stage Applied; visible on Nisha's dashboard |
-| TC-S09-02 | N | Nisha already applied to Software Engineer | Apply again to the same opening | Rejected with "already applied" |
-| TC-S09-03 | N | Opening is closed | Apply via the direct URL | Rejected; no application is created |
-| TC-S09-04 | N | Opening is open | Upload `resume.exe` | Validation error; upload rejected |
-| TC-S09-05 | P | Nisha and another candidate both applied | Sign in as Nisha and open the other application URL | Access denied |
-| TC-S09-06 | E | Nisha applies to a second, different opening | Submit | A second application is allowed and listed separately |
+| TC-S14-01 | H | Nisha signed in; Software Engineer opening is open | Apply with `resume.pdf` | Application created in stage Applied; visible on Nisha's dashboard |
+| TC-S14-02 | N | Nisha already applied to Software Engineer | Apply again to the same opening | Rejected with "already applied" |
+| TC-S14-03 | N | Opening is closed | Apply via the direct URL | Rejected; no application is created |
+| TC-S14-04 | N | Opening is open | Upload `resume.exe` | Validation error; upload rejected |
+| TC-S14-05 | P | Nisha and another candidate both applied | Sign in as Nisha and open the other application URL | Access denied |
+| TC-S14-06 | E | Nisha applies to a second, different opening | Submit | A second application is allowed and listed separately |
 
 ---
 
-## S10 — Recruitment pipeline, interviews, and offers
+## S15 — Recruitment pipeline, interviews, and offers
 
 | | |
 |---|---|
 | Epic | Hiring |
 | Priority | P0 |
-| Depends on | S09 |
+| Depends on | S14 |
 | Covers | REC-05 to REC-10, XC-04, R-17 |
 
 **Story**
-As a recruiter in the HR team, I want to move candidates through stages, record interviews, and
-issue offers, so that hiring is tracked and communicated consistently.
+As a recruiter in the HR team, I want to move candidates through stages, record interviews, and issue offers, so that hiring is tracked and communicated consistently.
 
 **Feature**
 - Pipeline stages: Applied → Screening → Interview → Offer → Hired; Rejected from any stage.
@@ -476,34 +694,33 @@ issue offers, so that hiring is tracked and communicated consistently.
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S10-01 | H | Nisha's application is in Applied | Move to Screening | Stage updates; history shows timestamp and actor |
-| TC-S10-02 | H | Application in Screening | Add internal note "Strong portfolio" | Note visible to HR; not visible on the candidate dashboard |
-| TC-S10-03 | I | Application in Interview | Record interview on 2026-11-05 with interviewer Arjun | Candidate email appears in the mail catcher with date and interviewer |
-| TC-S10-04 | N | Application in Interview | Move to Offer without CTC | Validation error; stage does not change |
-| TC-S10-05 | H | CTC 1,200,000 and start date provided | Move to Offer | Offer saved; currency INR from the India opening |
-| TC-S10-06 | H | Application in Screening | Reject with reason | Rejection email sent; candidate dashboard shows Rejected; further stage moves blocked |
-| TC-S10-07 | P | Signed in as Nisha | Open the pipeline board | Access denied |
+| TC-S15-01 | H | Nisha's application is in Applied | Move to Screening | Stage updates; history shows timestamp and actor |
+| TC-S15-02 | H | Application in Screening | Add internal note "Strong portfolio" | Note visible to HR; not visible on the candidate dashboard |
+| TC-S15-03 | I | Application in Interview | Record interview on 2026-11-05 with interviewer Arjun | Candidate email appears in the mail catcher with date and interviewer |
+| TC-S15-04 | N | Application in Interview | Move to Offer without CTC | Validation error; stage does not change |
+| TC-S15-05 | H | CTC 1,200,000 and start date provided | Move to Offer | Offer saved; currency INR from the India opening |
+| TC-S15-06 | H | Application in Screening | Reject with reason | Rejection email sent; candidate dashboard shows Rejected; further stage moves blocked |
+| TC-S15-07 | P | Signed in as Nisha | Open the pipeline board | Access denied |
 
 ---
 
-## S11 — Convert a hired candidate to an employee
+## S16 — Convert a hired candidate to an employee
 
 | | |
 |---|---|
 | Epic | Hiring |
 | Priority | P0 |
-| Depends on | S10, S03, S04 |
+| Depends on | S15, S03, S04 |
 | Covers | REC-09, EMP-13, DR-09, BR-REC-03, BR-REC-06 |
 
 **Story**
-As an HR user, I want to convert a hired candidate into an employee record, so that hiring hands
-off to onboarding without re-entering data.
+As an HR user, I want to convert a hired candidate into an employee record, so that hiring hands off to onboarding without re-entering data.
 
 **Feature**
 - Conversion action available only for applications in `Hired`.
 - Employee pre-filled from candidate and offer: name, email, phone, country, department, manager, CTC, components, start date.
 - Employee record stores a permanent reference to the candidate; both records show the link.
-- Conversion creates an onboarding checklist (completed in S12).
+- Conversion creates an onboarding checklist (completed in S17).
 - Duplicate conversion blocked.
 
 **Acceptance criteria**
@@ -519,27 +736,26 @@ off to onboarding without re-entering data.
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S11-01 | H | Nisha's application is Hired with offer data | Convert to employee | Employee created in `onboarding`; name, country, manager, CTC, start date match the offer |
-| TC-S11-02 | N | Application is in Offer | Click convert | Action unavailable/rejected |
-| TC-S11-03 | H | Employee created from Nisha | Open the employee and candidate records | Employee shows candidate reference; candidate shows created employee |
-| TC-S11-04 | N | Nisha already converted | Convert again | Rejected; no second employee |
-| TC-S11-05 | H | Conversion complete | Open the onboarding tab | Checklist exists with pending tasks |
-| TC-S11-06 | P | Signed in as Nisha (candidate) | Try to convert or open the employee record | Access denied |
+| TC-S16-01 | H | Nisha's application is Hired with offer data | Convert to employee | Employee created in `onboarding`; name, country, manager, CTC, start date match the offer |
+| TC-S16-02 | N | Application is in Offer | Click convert | Action unavailable/rejected |
+| TC-S16-03 | H | Employee created from Nisha | Open the employee and candidate records | Employee shows candidate reference; candidate shows created employee |
+| TC-S16-04 | N | Nisha already converted | Convert again | Rejected; no second employee |
+| TC-S16-05 | H | Conversion complete | Open the onboarding tab | Checklist exists with pending tasks |
+| TC-S16-06 | P | Signed in as Nisha (candidate) | Try to convert or open the employee record | Access denied |
 
 ---
 
-## S12 — Onboarding checklist, invite, and activation
+## S17 — Onboarding checklist, invite, and activation
 
 | | |
 |---|---|
 | Epic | Onboarding |
 | Priority | P0 |
-| Depends on | S11 |
+| Depends on | S16 |
 | Covers | ONB-01 to ONB-08, OFF-adjacent status rules |
 
 **Story**
-As an HR user, I want an onboarding checklist, document collection, and account invite, so that a
-new employee is fully ready and activated on the start date.
+As an HR user, I want an onboarding checklist, document collection, and account invite, so that a new employee is fully ready and activated on the start date.
 
 **Feature**
 - Checklist generated on conversion with task owner (HR, manager), due dates relative to start date.
@@ -563,344 +779,27 @@ new employee is fully ready and activated on the start date.
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S12-01 | H | Employee created from a hired candidate | Open onboarding | Tasks exist with correct owners and dates |
-| TC-S12-02 | H | Onboarding in progress | Upload contract and ID | Documents attach; tasks move to complete |
-| TC-S12-03 | I | Employee start date is in the future | Send invite, then try to sign in | Invite email appears in the mail catcher; login is denied until the start date |
-| TC-S12-04 | N | Mandatory document task incomplete | Attempt activation | Activation blocked with the missing item listed |
-| TC-S12-05 | H | HR waives the incomplete task with reason "joined with prior verified docs" | Activate | Employee becomes `active`; leave balances are created |
-| TC-S12-06 | E | Task overdue by 2 days | Run reminders | One reminder email per overdue task; none after completion |
-| TC-S12-07 | E | Onboarding in progress | Mark as no-show | Status closed; login blocked; no payroll inclusion |
+| TC-S17-01 | H | Employee created from a hired candidate | Open onboarding | Tasks exist with correct owners and dates |
+| TC-S17-02 | H | Onboarding in progress | Upload contract and ID | Documents attach; tasks move to complete |
+| TC-S17-03 | I | Employee start date is in the future | Send invite, then try to sign in | Invite email appears in the mail catcher; login is denied until the start date |
+| TC-S17-04 | N | Mandatory document task incomplete | Attempt activation | Activation blocked with the missing item listed |
+| TC-S17-05 | H | HR waives the incomplete task with reason "joined with prior verified docs" | Activate | Employee becomes `active`; leave balances are created |
+| TC-S17-06 | E | Task overdue by 2 days | Run reminders | One reminder email per overdue task; none after completion |
+| TC-S17-07 | E | Onboarding in progress | Mark as no-show | Status closed; login blocked; no payroll inclusion |
 
 ---
 
-## S13 — Leave balances and ledger
-
-| | |
-|---|---|
-| Epic | Leave |
-| Priority | P0 |
-| Depends on | S12 |
-| Covers | LVE-01, LVE-02, LVE-11, LVE-12, BR-LVE-05 |
-
-**Story**
-As an HR user, I want every employee to have leave balances and a ledger, so that entitlements,
-adjustments, and usage are accurate.
-
-**Feature**
-- Default annual balances for earned, sick, and casual on activation.
-- Unpaid leave is balance-free.
-- Ledger entries: entitlement, adjustment, usage, cancellation, reset.
-- HR adjustment with a mandatory reason.
-- Yearly reset on 1 January with no carryover; prior year remains viewable.
-
-**Acceptance criteria**
-
-- **AC-01** Activation creates balances from the configured default entitlements.
-- **AC-02** Balances show entitlement, adjustments, used, and remaining, and the ledger sums to the balance.
-- **AC-03** HR adjustments require a reason and are audit-logged.
-- **AC-04** The yearly reset creates new balances and preserves the previous year.
-- **AC-05** Unpaid leave has no balance and cannot be over-drawn.
-- **AC-06** A balance cannot become negative through HR adjustment below used days.
-
-**Test cases**
-
-| ID | Type | Given | When | Then |
-|---|---|---|---|---|
-| TC-S13-01 | H | The employee activated in S12 has defaults earned 18, sick 10, casual 8 | Open her leave page | Three balances exist with full remaining |
-| TC-S13-02 | H | HR adds +2 earned days with reason "policy correction" | Save | Remaining becomes 20; ledger shows +2 with reason and actor |
-| TC-S13-03 | H | Priya has 2 approved earned days used | Open the ledger | Entitlement + adjustments − used = remaining |
-| TC-S13-04 | E | Simulated date is 1 January of the next year | Run the reset | New-year balances equal defaults; prior-year ledger remains viewable |
-| TC-S13-05 | N | HR tries to reduce earned balance below used days | Save | Validation error; balance unchanged |
-| TC-S13-06 | E | Employee requests unpaid leave | Open balances | No unpaid balance row appears; request is still allowed |
-
-Existing active bootstrap employees (including Priya) are backfilled with balances by the same
-provisioning service used for new activations, so later stories can request leave for them.
-
----
-
-## S14 — Leave request submission
-
-| | |
-|---|---|
-| Epic | Leave |
-| Priority | P0 |
-| Depends on | S13 |
-| Covers | LVE-03, LVE-04, LVE-09, LVE-14, BR-LVE-01, BR-LVE-02, BR-LVE-07 |
-
-**Story**
-As an employee, I want to request leave with dates and type, so that my manager can approve it and
-payroll can account for unpaid days.
-
-**Feature**
-- Request form: type, start date, end date, reason, optional attachment.
-- Working-day calculation (Monday–Friday, no holidays).
-- Balance validation for earned, sick, and casual; no balance limit for unpaid.
-- Overlap and employment-date validation.
-- Pending status and email to the approver.
-- Employee can cancel a pending request.
-
-**Acceptance criteria**
-
-- **AC-01** A valid request is created in `pending` status and routed per S15.
-- **AC-02** The day count excludes weekends.
-- **AC-03** Requests exceeding available balance are rejected for balanced types.
-- **AC-04** Overlapping requests and dates outside employment are rejected.
-- **AC-05** Unpaid leave is accepted without a balance and marked for payroll deduction.
-- **AC-06** Cancelling a pending request closes it without changing the balance.
-
-**Test cases**
-
-| ID | Type | Given | When | Then |
-|---|---|---|---|---|
-| TC-S14-01 | H | Priya has 18 earned days | Request earned leave Monday–Tuesday (2 days) | Pending request created; 2 working days |
-| TC-S14-02 | E | Request Friday–Monday | Submit | 2 working days counted; weekend excluded |
-| TC-S14-03 | N | Priya already has approved leave 10–12 Nov | Request 11 Nov | Overlap rejected |
-| TC-S14-04 | N | Priya has 1 earned day remaining | Request 3 earned days | Rejected for insufficient balance |
-| TC-S14-05 | H | Priya requests unpaid leave for 3 days | Submit | Accepted; flagged for payroll deduction |
-| TC-S14-06 | N | Priya's start date is 1 Dec | Request leave for 28 Nov | Rejected; outside employment |
-| TC-S14-07 | H | Priya has a pending request | Cancel it | Status cancelled; balance unchanged |
-
----
-
-## S15 — Hierarchy-based leave approval and team calendar
-
-| | |
-|---|---|
-| Epic | Leave |
-| Priority | P0 |
-| Depends on | S14 |
-| Covers | LVE-05 to LVE-10, LVE-13, R-09 to R-13, XC-04 |
-
-**Story**
-As a manager, I want to approve leave for my direct reports, and as an employee I want my own
-request to go to my manager, so that approvals follow the hierarchy rather than a role.
-
-**Feature**
-- Routing to the direct manager; manager's own request to their manager; top-level request to HR.
-- Approve/reject with optional comment and email notifications.
-- Self-approval blocked.
-- HR override with a mandatory reason.
-- Approved leave reduces the balance; cancellation restores it.
-- Team calendar for the manager's subtree.
-- Pending requests re-routed when the manager changes.
-
-**Acceptance criteria**
-
-- **AC-01** A request routes to the requester's direct manager.
-- **AC-02** A manager's request routes to their own manager; if none, to HR.
-- **AC-03** Users cannot approve their own requests.
-- **AC-04** Approval reduces the balance and rejection leaves it unchanged; both email the requester.
-- **AC-05** HR can approve, reject, or cancel any request with a recorded reason.
-- **AC-06** Cancelling approved leave restores the days.
-- **AC-07** The team calendar shows approved leave for the manager's subtree only.
-- **AC-08** Changing a manager re-routes that employee's pending requests.
-
-**Test cases**
-
-| ID | Type | Given | When | Then |
-|---|---|---|---|---|
-| TC-S15-01 | H | Priya's request is pending; Arjun is her manager | Arjun approves | Status approved; 2 earned days deducted; Priya gets email |
-| TC-S15-02 | H | Pending request | Arjun rejects with comment | Status rejected; balance unchanged; comment visible to Priya |
-| TC-S15-03 | H | Arjun requests leave; Meera is his manager | Submit | Approver is Meera, not Arjun |
-| TC-S15-04 | E | Meera requests leave and has no manager | Submit | Approver is the HR team |
-| TC-S15-05 | N | Arjun is the approver | Arjun tries to approve his own request via direct URL | Rejected; status unchanged |
-| TC-S15-06 | H | Priya has a pending request | HR approves with reason "manager unavailable" | Approved; reason recorded; emails sent |
-| TC-S15-07 | H | Priya has approved leave | Cancel the approved leave | Days return to balance; ledger records the return |
-| TC-S15-08 | E | Priya has pending leave; her manager changes from Arjun to Meera | Change manager | Pending request now shows Meera as approver |
-| TC-S15-09 | P | Priya's leave is approved | Sign in as Arjun, open team calendar | Priya's leave is visible; John (USA) is not |
-| TC-S15-10 | H | Priya has a pending unpaid leave request for 2 days in the payroll month | HR approves the request | Status approved; the days are flagged as unpaid for the payroll run |
-
----
-
-## S16 — Attendance CSV import
-
-| | |
-|---|---|
-| Epic | Attendance |
-| Priority | P0 |
-| Depends on | S12 |
-| Covers | ATT-01, ATT-02, ATT-03, NFR-02 |
-
-**Story**
-As an HR user, I want to import attendance from device CSV files, so that attendance no longer
-lives in spreadsheets.
-
-**Feature**
-- CSV format: Employee ID, First In (timestamp), Last Out (timestamp).
-- Upload with header validation, row validation, and import summary.
-- Re-upload updates the same employee/date rather than duplicating.
-- Records visible to the employee and their manager subtree.
-- Only HR can import.
-
-**Acceptance criteria**
-
-- **AC-01** A valid CSV imports all rows and reports the count.
-- **AC-02** Missing or malformed columns reject the file with a clear message.
-- **AC-03** Unknown employee IDs and invalid timestamps are reported per row; valid rows import.
-- **AC-04** Re-importing the same employee and date updates the record instead of creating a duplicate.
-- **AC-05** Employees see their own attendance; managers see their subtree; HR sees all.
-- **AC-06** Import is restricted to HR.
-
-**Test cases**
-
-| ID | Type | Given | When | Then |
-|---|---|---|---|---|
-| TC-S16-01 | H | `attendance_sample.csv` with 3 valid rows for Priya, Arjun, John | Upload | 3 records imported; summary shows 3 succeeded |
-| TC-S16-02 | N | CSV header missing "Last Out" | Upload | File rejected with a header error; no rows imported |
-| TC-S16-03 | E | Row for employee `EMP999` who does not exist | Upload | Row rejected with "unknown employee"; other rows import |
-| TC-S16-04 | N | Row where Last Out is earlier than First In | Upload | Row rejected with a time-order error |
-| TC-S16-05 | E | Same file uploaded again | Upload | Records update; total count does not grow |
-| TC-S16-06 | P | Priya signed in | Upload a CSV | Access denied; data unchanged |
-| TC-S16-07 | P | Arjun signed in | Open John's attendance (outside his subtree) | Access denied |
-
----
-
-## S17 — Attendance exceptions and reconciliation
-
-| | |
-|---|---|
-| Epic | Attendance |
-| Priority | P0 |
-| Depends on | S16, S15 |
-| Covers | ATT-04 to ATT-09, BR-ATT-01 to BR-ATT-04 |
-
-**Story**
-As an HR user, I want attendance exceptions and a monthly reconciliation view, so that leave and
-attendance conflicts are resolved before payroll.
-
-**Feature**
-- Exception detection: missing first-in or last-out, no attendance on a working day without approved leave, attendance on approved leave.
-- HR correction with a reason; exception review/waive.
-- Monthly reconciliation: approved leave, unpaid days, attendance days, open exceptions per employee.
-- Export of reconciliation data.
-- Manager visibility limited to subtree.
-
-**Acceptance criteria**
-
-- **AC-01** Exceptions are generated for the three defined conditions on working days.
-- **AC-02** HR corrections update the record, are audit-logged, and resolve the related exception.
-- **AC-03** Waived exceptions are excluded from the open count but retained.
-- **AC-04** The reconciliation view shows correct leave and attendance totals per employee for the month.
-- **AC-05** Reconciliation export matches the on-screen numbers and respects permissions.
-- **AC-06** Managers see only their subtree's exceptions.
-
-**Test cases**
-
-| ID | Type | Given | When | Then |
-|---|---|---|---|---|
-| TC-S17-01 | H | Priya has attendance with no Last Out | Open exceptions | "Missing last out" exception appears for that date |
-| TC-S17-02 | E | Priya has no attendance and no approved leave on a working day | Open exceptions | "No attendance, no leave" exception appears |
-| TC-S17-03 | E | Priya has approved leave on a day with attendance | Open exceptions | "Attendance on leave" conflict appears |
-| TC-S17-04 | H | Missing last-out exception exists | HR enters Last Out with reason "device error" | Record corrected; exception resolved; change audited |
-| TC-S17-05 | H | An exception exists | HR waives it with a reason | Exception moves to waived; open count decreases |
-| TC-S17-06 | H | Month has attendance, approved leave, and unpaid days | Open monthly reconciliation | Days and exception counts match the records |
-| TC-S17-07 | H | Reconciliation visible | Export CSV | Export rows and totals match the screen |
-| TC-S17-08 | P | Arjun signed in | Open reconciliation for John (USA) | Access denied; only his subtree is visible |
-
----
-
-## S18 — Monthly payroll run
-
-| | |
-|---|---|
-| Epic | Payroll |
-| Priority | P0 |
-| Depends on | S15, S17 |
-| Covers | PAY-01 to PAY-05, PAY-09, PAY-11, BR-PAY-01 to BR-PAY-08 |
-
-**Story**
-As an HR user, I want to prepare a monthly payroll run from CTC, unpaid leave, and manual
-adjustments, so that the payout amounts are complete and validated before export.
-
-**Feature**
-- Select a month and create a draft run for all `active`/`notice` employees.
-- Monthly gross = sum of annual components ÷ 12.
-- Automatic unpaid-leave deduction using working days in the month.
-- Manual adjustments with descriptions.
-- Blocking validation for missing bank name, account number, or components; annual CTC is derived from the component sum.
-- Review totals by employee, country, currency; no tax or other deductions.
-
-**Acceptance criteria**
-
-- **AC-01** The run includes `active` and `notice` employees and excludes `exited` employees.
-- **AC-02** Monthly gross equals the sum of components divided by 12, rounded to two decimals.
-- **AC-03** Unpaid leave days in the month produce the deduction `(monthly gross ÷ working days) × unpaid days`.
-- **AC-04** Adjustments are added or subtracted with a description and appear in the total.
-- **AC-05** Export-blocking data issues are listed and prevent approval.
-- **AC-06** The run cannot be created or edited by non-HR users.
-- **AC-07** No tax, statutory deduction, benefit, or payslip value is calculated.
-
-**Test cases**
-
-| ID | Type | Given | When | Then |
-|---|---|---|---|---|
-| TC-S18-01 | H | Active employees with CTC and components exist | Create a run for November 2026 | Draft run lists all active employees with monthly gross |
-| TC-S18-02 | H | Priya's CTC is 1,200,000 (Basic 1,200,000) | Open her payroll line | Monthly gross is 100,000.00 |
-| TC-S18-03 | H | Priya has 2 unpaid leave days in a month with 20 working days | Add to the run | Deduction is 10,000.00 (100,000 ÷ 20 × 2) |
-| TC-S18-04 | H | HR adds a bonus adjustment of 5,000 | Save | Total = gross − unpaid deduction + 5,000; description shown |
-| TC-S18-05 | N | Employee has no bank account number | Attempt to approve/export | Blocked; the employee is listed as missing bank details |
-| TC-S18-06 | E | Components total 1,000,000 but CTC is 1,200,000 | Create run | Warning shown; HR must resolve before export |
-| TC-S18-07 | H | Draft run exists | Filter/summarise by country and currency | Totals reconcile with employee lines; no conversion across currencies |
-| TC-S18-08 | P | Arjun (manager) signed in | Create or edit a payroll run | Access denied |
-
----
-
-## S19 — Payroll Excel export and history
-
-| | |
-|---|---|
-|---|---|
-| Epic | Payroll |
-| Priority | P0 |
-| Depends on | S18 |
-| Covers | PAY-06 to PAY-08, PAY-10, BR-PAY-06 |
-
-**Story**
-As an HR user, I want to export the approved monthly payroll to Excel and re-download past runs, so
-that Finance can pay employees from one file.
-
-**Feature**
-- Generate XLSX with the documented columns, including bank name, IFSC, account number, gross, unpaid deduction, adjustments, total, pay period.
-- Generated runs are immutable; re-download returns the same content.
-- Status: draft → generated → paid.
-- Export and status changes are audit-logged.
-
-**Acceptance criteria**
-
-- **AC-01** Export is available only for a complete run with no blocking issues.
-- **AC-02** The file contains every required column and one row per included employee.
-- **AC-03** Amounts and bank details in the file match the review screen.
-- **AC-04** After generation, the run is locked; edits are rejected.
-- **AC-05** A generated run can be re-downloaded with identical content and marked paid.
-- **AC-06** Export and paid status are recorded in the audit history.
-- **AC-07** Only HR can export.
-
-**Test cases**
-
-| ID | Type | Given | When | Then |
-|---|---|---|---|---|
-| TC-S19-01 | H | Approved draft run | Export XLSX | File downloads and opens; headers match the specification |
-| TC-S19-02 | H | Exported file | Compare Priya's row | Bank name, IFSC, account number, gross, deduction, adjustment, total, period are correct |
-| TC-S19-03 | N | Export completed | Attempt to edit the run | Edit rejected; run is immutable |
-| TC-S19-04 | H | Generated run exists | Re-download | Content identical (same amounts and rows) |
-| TC-S19-05 | H | Generated run exists | Mark as paid with a date | Status becomes paid; date recorded |
-| TC-S19-06 | H | Export performed | Open audit history | Export actor, timestamp, and paid status are listed |
-| TC-S19-07 | P | Priya signed in | Request the payroll export URL | Access denied |
-
----
-
-## S20 — Offboarding and access deactivation
+## S18 — Offboarding and access deactivation
 
 | | |
 |---|---|
 | Epic | Offboarding |
 | Priority | P0 |
-| Depends on | S12, S19 |
+| Depends on | S17, S09 |
 | Covers | OFF-01 to OFF-08, BR-OFF-01 to BR-OFF-03 |
 
 **Story**
-As an HR user, I want to offboard an employee with a checklist and automatic access removal, so
-that the exit is clean and final pay is included.
+As an HR user, I want to offboard an employee with a checklist and automatic access removal, so that the exit is clean and final pay is included.
 
 **Feature**
 - Initiate offboarding with type, reason, notice period, and last working day; status becomes `notice`.
@@ -923,123 +822,61 @@ that the exit is clean and final pay is included.
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S20-01 | H | Emily is active | Initiate offboarding with last working day 30 Nov | Status `notice`; date stored; checklist created |
-| TC-S20-02 | E | Last working day 30 Nov; simulated date 1 Dec | Employee tries to sign in | Login blocked; session cannot be established |
-| TC-S20-03 | H | Offboarding in progress | HR deactivates immediately | Login blocked at once; checklist records the action |
-| TC-S20-04 | H | Final pay adjustment of 50,000 entered | Create the next payroll run | Emily appears with the final-pay line |
-| TC-S20-05 | H | Exit notes entered | Sign in as Emily's manager (Carol) | Notes are not visible; HR can see them |
-| TC-S20-06 | H | Rehire flag set to "eligible" | View the employee record | Flag is displayed to HR |
-| TC-S20-07 | E | Emily is exited | Run payroll for the following month | Emily is excluded automatically |
-| TC-S20-08 | P | Emily signed in before exit | Request leave after the last working day | Request rejected |
+| TC-S18-01 | H | Emily is active | Initiate offboarding with last working day 30 Nov | Status `notice`; date stored; checklist created |
+| TC-S18-02 | E | Last working day 30 Nov; simulated date 1 Dec | Employee tries to sign in | Login blocked; session cannot be established |
+| TC-S18-03 | H | Offboarding in progress | HR deactivates immediately | Login blocked at once; checklist records the action |
+| TC-S18-04 | H | Final pay adjustment of 50,000 entered | Create the next payroll run | Emily appears with the final-pay line |
+| TC-S18-05 | H | Exit notes entered | Sign in as Emily's manager (Carol) | Notes are not visible; HR can see them |
+| TC-S18-06 | H | Rehire flag set to "eligible" | View the employee record | Flag is displayed to HR |
+| TC-S18-07 | E | Emily is exited | Run payroll for the following month | Emily is excluded automatically |
+| TC-S18-08 | P | Emily signed in before exit | Request leave after the last working day | Request rejected |
 
 ---
 
-## S21 — Reporting dashboards and exports
+## S19 — Employee change history
 
 | | |
 |---|---|
-| Epic | Reporting |
+| Epic | People |
 | Priority | P0 |
-| Depends on | S20 |
-| Covers | RPT-01 to RPT-12, BR-RPT-01 to BR-RPT-03 |
+| Depends on | S18 |
+| Covers | XC-09, NFR-07 (employee records) |
+
+Deferred from S05 to the last phase.
 
 **Story**
-As an HR user or manager, I want standard reports and dashboards, so that I can answer headcount,
-attrition, leave, attendance, payroll, and hiring questions without Excel.
+As an HR user, I want to see who changed what on an employee record, so that records stay traceable.
 
 **Feature**
-- HR dashboard: headcount, joiners/leavers, pending approvals, payroll status, attendance exceptions.
-- Reports: headcount by country/department/manager/status, joiners and leavers, attrition, leave balances and usage, attendance exceptions, payroll totals by month/country/currency, recruitment pipeline.
-- Manager dashboard scoped to subtree.
-- Filters and CSV/XLSX export; permission-safe.
-- No salary or bank data for managers or candidates.
+- Change history with actor, timestamp, field, old value, and new value.
+- Bank account numbers appear masked to the last four digits in history.
 
 **Acceptance criteria**
 
-- **AC-01** Headcount reconciles with the employee list for the same filters.
-- **AC-02** Joiners/leavers show the correct dates and count.
-- **AC-03** Attrition equals leavers ÷ average of opening and closing headcount, with the formula visible.
-- **AC-04** Leave and attendance reports reconcile with their source records.
-- **AC-05** Payroll totals reconcile with generated runs and are grouped by currency without conversion.
-- **AC-06** Managers see only their subtree; candidates cannot access reports.
-- **AC-07** Exports match the on-screen filtered results and are audit-logged.
-- **AC-08** Salary, CTC, and bank details never appear in manager or candidate output.
+- **AC-01** Every employee field change creates an audit entry showing old and new values.
+- **AC-02** HR, the employee, and managers of the employee's subtree can view the history; others cannot.
+- **AC-03** Full bank account numbers never appear in change history.
 
 **Test cases**
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S21-01 | H | Employees across three countries | Filter headcount by country | Counts match the filtered employee list |
-| TC-S21-02 | H | One joiner and one leaver in November | Open joiners/leavers | Lists show both with correct dates |
-| TC-S21-03 | H | Opening headcount 20, closing 18, 4 leavers | Open attrition | Value is 4 ÷ 19 = 21.05%, formula visible |
-| TC-S21-04 | H | Leave and attendance data exist | Open leave and attendance reports | Totals match balances, requests, and exceptions |
-| TC-S21-05 | H | Payroll runs exist | Open payroll totals | Totals match runs, grouped by currency |
-| TC-S21-06 | H | Recruitment data exists | Open pipeline report | Counts match openings and applications |
-| TC-S21-07 | P | Arjun (manager) signed in | Open HR dashboard and a report for John (USA) | HR dashboard denied; only his subtree report is visible |
-| TC-S21-08 | P | Nisha (candidate) signed in | Open any report URL | Access denied |
-| TC-S21-09 | H | Headcount report filtered to India | Export XLSX | File rows and totals match the filtered list |
-| TC-S21-10 | P | Arjun signed in | Export a report | No salary, CTC, or bank columns are present |
-
----
-
-## S22 — Demo seed data and scale verification
-
-| | |
-|---|---|
-| Epic | Demo readiness |
-| Priority | P0 |
-| Depends on | S21 |
-| Covers | NFR-16, NFR-17, NFR-02, G1, G6 |
-
-**Story**
-As a demo owner, I want a repeatable seed with 10,000 employees, 100 candidates, and two months of
-attendance, so that the product can be demonstrated and performance-tested at realistic scale.
-
-**Feature**
-- Faker-based seed script with a default size of 10,000 employees and 100 candidates.
-- Multi-level hierarchy across India, USA, and Canada; country-appropriate currencies.
-- 100 candidates with applications in different stages (Applied, Screening, Interview, Offer, Hired, Rejected).
-- Two months of attendance for active employees.
-- Idempotent re-run (no duplicates), clear prefixes for seeded records, and a runtime target.
-- Sample login accounts for demo roles.
-
-**Acceptance criteria**
-
-- **AC-01** A single command seeds 10,000 employees, 100 candidates, and attendance for the last two months.
-- **AC-02** Employees span India, USA, and Canada with the correct currencies and a hierarchy at least three levels deep.
-- **AC-03** Candidates have applications distributed across all pipeline stages.
-- **AC-04** Attendance covers working days for the last two months for active employees.
-- **AC-05** Re-running the seed does not duplicate records.
-- **AC-06** The full seed completes within 15 minutes.
-- **AC-07** Sample HR, manager, employee, and candidate accounts can sign in.
-- **AC-08** Headcount reporting reflects the seeded population after the run.
-
-**Test cases**
-
-| ID | Type | Given | When | Then |
-|---|---|---|---|---|
-| TC-S22-01 | H | Clean development database | Run the seed command | Command completes successfully; summary reports 10,000 employees and 100 candidates |
-| TC-S22-02 | H | Seed completed | Count employees by country | All three countries present; INR, USD, CAD assigned correctly |
-| TC-S22-03 | H | Seed completed | Inspect hierarchy | At least three levels exist; no cycles; every manager is an employee |
-| TC-S22-04 | H | Seed completed | Open recruitment pipeline | Applications exist in every stage |
-| TC-S22-05 | H | Seed completed | Check attendance coverage | Active employees have attendance for working days in the last two months |
-| TC-S22-06 | E | Seed already run | Run the seed again | No duplicate employee IDs, candidates, or attendance rows; counts unchanged |
-| TC-S22-07 | PF | Clean database | Time the seed run | Completes in under 15 minutes |
-| TC-S22-08 | H | Seed completed | Sign in with each sample account | HR, manager, employee, and candidate land on their correct dashboards |
-| TC-S22-09 | H | Seed completed | Open headcount report | Reported total matches 10,000 (plus non-seed demo records) |
+| TC-S19-01 | H | HR changes Priya's department | Open change history | Entry shows actor, timestamp, old department, new department |
+| TC-S19-02 | P | Signed in as an employee outside Priya's subtree | Open Priya's change history | Request is denied |
+| TC-S19-03 | E | HR changes Priya's bank account number | Open change history | Old and new values show only the last four digits |
 
 ---
 
 ## End-to-end acceptance story
 
-After S22 passes, run one continuous scenario:
+After S18 passes, run one continuous scenario:
 
 1. Nisha (candidate) registers, signs in, and applies to the open Software Engineer role.
 2. HR moves the application through Screening and Interview, records an interview, and creates an offer.
 3. HR hires Nisha and converts her to an employee; the employee record references Nisha's candidate record.
 4. HR completes onboarding, sends the invite, and activates the employee.
-5. Nisha requests earned leave; Arjun approves; the balance decreases.
-6. HR imports attendance for the month, including a conflict with Nisha's leave, and resolves it.
+5. HR uploads the overnight leave CSV including Nisha's earned leave request; balance decreases.
+6. HR uploads the overnight attendance CSV including a day that conflicts with Nisha's leave; conflict is resolved.
 7. HR creates the monthly payroll run and exports the Excel payout file; Nisha's row is present with bank details.
 8. HR offboards Nisha with a last working day and a final-pay adjustment; her login stops working.
 9. HR opens the dashboard and confirms headcount, attrition, leave, attendance, and payroll figures.

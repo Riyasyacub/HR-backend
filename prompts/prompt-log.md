@@ -795,3 +795,115 @@ see no manager edit controls. Full frontend: 63 tests passed; typecheck and lint
 159 examples, 0 failures; RuboCop clean. Production lines: 59 (14 API + 45 profile), which exceeds
 the 50-line guideline; recommend splitting into smaller chunks in future stories. S04 acceptance
 criteria AC-01 through AC-06 are now covered end-to-end. No commit made.
+
+### Commit S04
+
+> commit S04
+
+Notes: Committed Story S04 in both repositories: backend `22c6aa5`, frontend `168d5fa`. All acceptance criteria AC-01 through AC-06 covered end-to-end. Backend suite: 159 examples, 0 failures; RuboCop clean. Frontend suite: 63 tests passed; typecheck and lint clean. Working trees clean in both repos.
+
+### Change of plan: reorder stories; leaves/attendance as overnight CSV
+
+> We have a change of plan now. Move the hiring, onboarding and offboarding to the last phases. The leaves and the attendance will all be overnight CSV files that will be uploaded every morning. Change the product stories accordingly.
+
+Notes: Starting a major scope re-sequence. Reading current product stories, requirements, and test plan before rewriting.
+
+### Proposed new story order (awaiting confirmation)
+
+Notes: Before rewriting docs, I am proposing the new story order. Hiring (S07–S11), onboarding (S12),
+and offboarding (S20) move to the last phases. Leaves (S13–S15) and attendance (S16–S17) become
+overnight CSV uploads. Total stories would reduce from 22 to 19.
+
+### Change of plan: reorder stories; leaves/attendance as overnight CSV
+
+> We have a change of plan now. Move the hiring, onboarding and offboarding to the last phases. The leaves and the attendance will all be overnight CSV files that will be uploaded every morning. Change the product stories accordingly.
+
+Notes: Re-sequenced product stories from 22 to 18 stories. Hiring (S12–S16), onboarding (S17), and offboarding (S18) moved to last phases. Leave and attendance converted from interactive UI to overnight CSV uploads (S06, S07). Updated docs/product-stories.md (complete rewrite with new S05–S18), docs/requirements.md (version 0.4, CSV-based leave/attendance, updated release plan and traceability), docs/test-plan.md (new execution order, accounts, smoke pack), docs/README.md (current stage, 18 stories). S01–S04 remain unchanged and committed. No code changes; documentation only.
+
+### Start S05
+
+> start S05
+
+Notes: Starting S05 (Employee self-service, directory, and change history). Backend and frontend work:
+audit entries on field changes, self-service contact edits, permission-aware directory with filters,
+and change-history view. Planning chunks within the 50-line review limit.
+
+## 2026-10-27
+
+### Convert AGENTS.md to CLAUDE.md
+
+> convert the agents.md to claude.md file
+
+Notes: Created CLAUDE.md as a copy of AGENTS.md with the heading changed to `# CLAUDE.md`. AGENTS.md kept. Documentation only; no tests run.
+
+### Review S05
+
+> review S05
+
+Notes: Low-effort code review of the uncommitted S05 changes. Found 4 issues: audit_entries association missing `as: :auditable` (and no AuditEntry model/migration in the diff); full bank account numbers stored in audit change_set; self_service_attributes_only? always returns true; employees index scoping never runs (index? still hr?) and filters on the wrong column. No code changed.
+
+### Fix S05 review findings
+
+> fix those
+
+Notes: Fixed 4 S05 review findings with specs first (red confirmed). employee.rb: audit_entries uses `as: :auditable`; account numbers masked to last 4 digits in audit change_set. employee_policy.rb: removed always-true self_service_attributes_only?; added permitted_attributes_for_update and Scope (HR all, manager subtree, employee all directory fields, no employee record none); index? open to signed-in users. employees_controller.rb: uses policy_scope and permitted_attributes. Specs added in spec/models/employee_spec.rb and spec/requests/api/v1/employees_spec.rb; replaced "denies a non-HR user" index spec. Suite: 169 examples, 3 failures already present before this fix (earlier S05 diff added user_id to employee JSON; specs not updated). RuboCop clean. Frontend not touched.
+
+### Remove user_id from employee response
+
+> remove used_id from response for now
+
+Notes: Removed user_id from employee_json in app/controllers/api/v1/employees_controller.rb (-1 field). Full suite: 169 examples, 0 failures; RuboCop clean. Frontend still reads user_id (src/api/employees.ts, src/pages/EmployeeProfilePage.tsx); not changed, raised with user.
+
+### Remove S05 audit logs, defer to last phase
+
+> remove audit logs now, move it to last phase
+
+Notes: Removed employee change history from S05. Backend: dropped the audit callback, audit_entries association and masking in app/models/employee.rb; the audit_entries action, audit_json and Thread.current actor in employees_controller.rb; audit_entries? in employee_policy.rb; the member route in config/routes.rb; related specs. AuditEntry model and table kept (S02 leave-type audit uses them). Frontend: removed the change-history section and fetch from src/pages/EmployeeProfilePage.tsx; dropped user_id from EmployeeSummary in src/api/employees.ts (follow-up to previous entry). Docs: added S19 Employee change history as the last story (product-stories.md, README.md, test-plan.md); S05 AC-04 and TC-S05-05 marked as moved. Checks: rspec 165 examples, 0 failures; RuboCop clean; Vitest 63 passed; typecheck and lint clean.
+
+### Manager filter lists only managers
+
+> in employees page, there is a dropdown for managers, which includes employees who are not managers too, fix that
+
+Notes: Added `managers_only=true` filter to GET /api/v1/employees (employees with at least one direct report) in employees_controller.rb (+1 line); EmployeesPage.tsx manager dropdown now requests it (1 line changed). Specs first (red confirmed): request spec in spec/requests/api/v1/employees_spec.rb, Vitest case in src/pages/EmployeesPage.test.tsx. rspec 166/0 failures, RuboCop clean, Vitest 64 passed (serial run; parallel run hit a worker start timeout), typecheck and lint clean. docs/api.md updated with list scoping and filters, including managers_only.
+
+### Employee login timing
+
+> still we haven't enabled login for employee right? we will do this later
+
+Notes: Question only, no code changed. Confirmed: creating an employee does not create a login; only seeded demo users (db/seeds.rb) can sign in, and they are not linked to employee records. Employee invite and activation are planned for S17.
+
+### S05 completion check
+
+> is S05 completed now?
+
+Notes: Status check only, no code changed. S05 not complete: no specs for directory filters/search (TC-S05-03, TC-S05-04); work-email change ignored not rejected (TC-S05-02); profile self-service form hidden for owners pending editable/user_id decision; no frontend tests for directory filters or self-service form; S05 docs/API contract partly updated; regression smoke pack not run; not committed.
+
+### Finish S05 items 1-4 with editable flag
+
+> go with option A and do items 1-4
+
+Notes: Completed S05 items 1-4 (option A). Backend: PATCH /employees/:id returns 422 read_only_fields when a field outside the caller's permitted list is sent (TC-S05-02); profile response adds `editable` and, for HR/owner, contact fields (employees_controller.rb). Specs added: country filter (TC-S05-03), partial-name search scoped to viewer (TC-S05-04) (both passed on first run; code already existed), read-only rejection, editable true/false; updated HR profile spec and earlier "ignores protected fields" spec. Frontend: EmployeeProfilePage shows contact form when `editable`, shows "Contact saved."; EmployeeDetail type adds editable/contact fields; removed `as any` casts. Vitest: owner saves contact, form hidden when not editable, directory refetch by country+status (passed on first run). docs/api.md updated. rspec 170/0, RuboCop clean, Vitest 67 passed (serial), typecheck and lint clean. Production lines about 25.
+
+### Why the last turn was slow
+
+> why it is taking some much time for you? its more than 7m. what is the issue>
+
+Notes: Question only, no code changed. Explained the main causes: test runs on the Windows-mounted /mnt/d drive, many separate red/green test runs, full-suite runs at the end, and serial Vitest after a worker timeout. Suggested moving both repos to the Linux filesystem.
+
+### Faster test workflow
+
+> do 2 and 3
+
+Notes: Agreed to run only affected spec files during red/green, run full suites and checks once at the checkpoint, and batch reads/edits. Saved as feedback memory. No code changed.
+
+### Approve S05, smoke pack, commit
+
+> approved, run smoke pack and commit S05
+
+Notes: User stopped the smoke pack run before it started (dev server and DB commands were rejected), so the smoke pack was not run.
+
+### Commit S05
+
+> commit S05
+
+Notes: Committed S05 in both repos without the regression smoke pack (user skipped it). CLAUDE.md left uncommitted (not part of S05).

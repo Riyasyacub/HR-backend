@@ -275,8 +275,13 @@ two places.
 
 ### GET `/api/v1/employees`
 
-HR only. Returns employees ordered by `employee_id`. Results are offset-paginated with `page`
-(default 1) and `per_page` (default 25, maximum 100).
+Any signed-in user. Results follow the viewer's scope: HR sees everyone, a manager sees their
+subtree, an employee sees all colleagues (directory fields only), and a user without an employee
+record gets an empty list. Returns employees ordered by `employee_id`. Results are
+offset-paginated with `page` (default 1) and `per_page` (default 25, maximum 100).
+
+Optional filters: `country`, `department_id`, `manager_id`, `status`, `search` (partial match on
+name or employee ID), and `managers_only=true` (only employees with at least one direct report).
 
 Success: `200 OK`
 
@@ -310,7 +315,9 @@ Failure: `401 Unauthorized` with code `invalid_token` without a valid access tok
 HR can view any employee. A standard employee can view only the record linked to their own user.
 A manager can view employees in their reporting subtree. Bank details and the latest compensation
 with its components are included only for HR and the linked employee; manager views omit them.
-Any other employee URL returns `403 Forbidden`.
+HR and the linked employee also receive `phone`, `personal_email`, `address`, and
+`emergency_contact`. Every profile includes `editable` (`true` when the viewer may update the
+record). Any other employee URL returns `403 Forbidden`.
 
 Success: `200 OK`
 
@@ -432,8 +439,21 @@ subtree, but cannot edit assignments or view compensation and bank details for t
 
 ### PATCH `/api/v1/employees/:id`
 
-HR only. Updates HR-managed employee fields. For manager assignment, send `manager_id`; send `null`
-to remove the manager. Omitting a field leaves it unchanged.
+HR can update HR-managed fields and contact fields. The linked employee can update only `phone`,
+`personal_email`, `address`, and `emergency_contact`. For manager assignment, send `manager_id`;
+send `null` to remove the manager. Omitting a field leaves it unchanged.
+
+Sending a field the caller may not change returns `422` and nothing is saved:
+
+```json
+{
+  "error": {
+    "code": "read_only_fields",
+    "message": "These fields cannot be changed: work_email",
+    "details": ["work_email"]
+  }
+}
+```
 
 Request:
 

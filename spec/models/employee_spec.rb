@@ -156,4 +156,23 @@ RSpec.describe Employee, type: :model do
       expect(priya).not_to be_manager
     end
   end
+
+  describe "self-service contact fields" do
+    it "accepts phone, personal email, address, and emergency contact" do
+      employee = build(:employee,
+        phone: "+91-98765-43210",
+        personal_email: "ravi.personal@demo.test",
+        address: "123 Main Street, Bangalore",
+        emergency_contact: "+91-98765-00000")
+
+      expect(employee).to be_valid
+    end
+
+    it "treats self-service fields as optional" do
+      employee = build(:employee, phone: nil, personal_email: nil,
+        address: nil, emergency_contact: nil)
+
+      expect(employee).to be_valid
+    end
+  end
 end

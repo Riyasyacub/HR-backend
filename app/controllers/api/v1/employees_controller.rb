@@ -9,10 +9,17 @@ class Api::V1::EmployeesController < ApplicationController
 
   def index
     authorize Employee
-    employees = Employee.includes(:department, :manager).order(:employee_id)
-      .offset((page - 1) * per_page).limit(per_page)
+    scope = policy_scope(Employee).includes(:department, :manager).order(:employee_id)
+    scope = scope.where(country: params[:country]) if params[:country].present?
+    scope = scope.where(department_id: params[:department_id]) if params[:department_id].present?
+    scope = scope.where(manager_id: params[:manager_id]) if params[:manager_id].present?
+    scope = scope.where(status: params[:status]) if params[:status].present?
+    scope = scope.where(id: Employee.select(:manager_id)) if params[:managers_only] == "true"
+    scope = scope.where("first_name ILIKE ? OR last_name ILIKE ? OR employee_id ILIKE ?",
+      "%#{params[:search]}%", "%#{params[:search]}%", "%#{params[:search]}%") if params[:search].present?
+    employees = scope.offset((page - 1) * per_page).limit(per_page)
     render json: { data: employees.map { |employee| employee_json(employee) },
-      meta: { page:, per_page:, total: Employee.count } }
+      meta: { page:, per_page:, total: scope.count } }
   end
 
   def show
@@ -29,7 +36,9 @@ class Api::V1::EmployeesController < ApplicationController
 
   def update
     authorize employee
-    employee.update!(params.expect(employee: UPDATE_ATTRIBUTES))
+    return render_read_only_fields(read_only_fields) if read_only_fields.any?
+
+    employee.update!(permitted_attributes(employee))
     render json: { data: employee_detail_json(employee.reload) }
   rescue ActiveRecord::RecordInvalid => e
     render_error(status: :unprocessable_content, code: "validation_failed",
@@ -91,11 +100,22 @@ class Api::V1::EmployeesController < ApplicationController
     }
   end
 
+  def read_only_fields
+    submitted = params.fetch(:employee, {}).keys
+    submitted - policy(employee).permitted_attributes_for_update.map(&:to_s)
+  end
+
+  def render_read_only_fields(fields)
+    render_error(status: :unprocessable_content, code: "read_only_fields",
+      message: "These fields cannot be changed: #{fields.join(', ')}", details: fields)
+  end
+
   def employee_detail_json(employee)
-    json = employee_json(employee)
+    json = employee_json(employee).merge("editable" => policy(employee).update?)
     return json unless current_user.hr? || employee.user_id == current_user.id
 
     json.merge(
+      employee.as_json(only: EmployeePolicy::SELF_SERVICE_ATTRIBUTES),
       "bank" => employee.as_json(only: %i[bank_name ifsc account_number]),
       "compensation" => compensation_json(employee)
     )

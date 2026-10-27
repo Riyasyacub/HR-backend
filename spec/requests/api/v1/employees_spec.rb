@@ -68,11 +68,66 @@ RSpec.describe "Employees", type: :request do
     expect(department_queries.size).to eq(1)
   end
 
-  it "denies a non-HR user" do
+  it "limits a manager's directory to their subtree (AC-06, TC-S05-06)" do
+    manager_user = create(:user)
+    arjun = create(:employee, employee_id: "EMP101", user: manager_user)
+    priya = create(:employee, employee_id: "EMP102", manager: arjun)
+    create(:employee, employee_id: "EMP103", manager: priya)
+    create(:employee, employee_id: "EMP104")
+
+    get_employees(authentication_headers(manager_user))
+
+    expect(response.parsed_body["data"].pluck("employee_id")).to eq(%w[EMP102 EMP103])
+  end
+
+  it "lists colleagues with directory fields only for an employee (TC-S05-07)" do
+    employee_user = create(:user)
+    create(:employee, employee_id: "EMP101", user: employee_user)
+    create(:employee, employee_id: "EMP102")
+
+    get_employees(authentication_headers(employee_user))
+
+    expect(response.parsed_body["data"].pluck("employee_id")).to eq(%w[EMP101 EMP102])
+    expect(response.parsed_body["data"].first.keys).not_to include("bank", "compensation")
+  end
+
+  it "returns an empty directory for a user without an employee record" do
+    create(:employee)
+
     get_employees(authentication_headers(create(:user)))
 
-    expect(response).to have_http_status(:forbidden)
-    expect(response.parsed_body.dig("error", "code")).to eq("forbidden")
+    expect(response.parsed_body["data"]).to be_empty
+  end
+
+  it "filters the directory by country (TC-S05-03)" do
+    create(:employee, employee_id: "EMP101", country: "India")
+    create(:employee, employee_id: "EMP102", country: "USA")
+    create(:employee, employee_id: "EMP103", country: "Canada")
+
+    get_employees(hr_headers, { country: "USA" })
+
+    expect(response.parsed_body["data"].pluck("employee_id")).to eq(%w[EMP102])
+  end
+
+  it "searches by partial name within the viewer's scope (TC-S05-04)" do
+    manager_user = create(:user)
+    arjun = create(:employee, employee_id: "EMP101", user: manager_user)
+    create(:employee, employee_id: "EMP102", first_name: "Priyanka", manager: arjun)
+    create(:employee, employee_id: "EMP103", first_name: "Priya")
+
+    get_employees(authentication_headers(manager_user), { search: "priy" })
+
+    expect(response.parsed_body["data"].pluck("employee_id")).to eq(%w[EMP102])
+  end
+
+  it "lists only employees with direct reports when managers_only is set" do
+    arjun = create(:employee, employee_id: "EMP101")
+    create(:employee, employee_id: "EMP102", manager: arjun)
+    create(:employee, employee_id: "EMP103")
+
+    get_employees(hr_headers, { managers_only: "true" })
+
+    expect(response.parsed_body["data"].pluck("employee_id")).to eq(%w[EMP101])
   end
 
   it "rejects an unauthenticated request" do
@@ -112,7 +167,8 @@ RSpec.describe "Employees", type: :request do
           "last_name" => "Kumar", "work_email" => "ravi@demo.test", "country" => "India",
           "currency" => "INR", "job_title" => "Software Engineer", "start_date" => "2026-01-01",
           "status" => "active", "department" => { "id" => department.id, "name" => "Engineering" },
-          "manager" => nil,
+          "manager" => nil, "editable" => true, "phone" => nil, "personal_email" => nil,
+          "address" => nil, "emergency_contact" => nil,
           "bank" => {
             "bank_name" => "HDFC Bank", "ifsc" => "HDFC0001234",
             "account_number" => "123456789012"
@@ -430,6 +486,48 @@ RSpec.describe "Employees", type: :request do
 
       expect(response).to have_http_status(:unauthorized)
       expect(response.parsed_body.dig("error", "code")).to eq("invalid_token")
+    end
+  end
+
+  describe "self-service updates" do
+    let(:employee_user) { create(:user) }
+    let!(:priya) { create(:employee, user: employee_user, job_title: "Engineer") }
+
+    it "saves the employee's own phone (TC-S05-01)" do
+      patch "/api/v1/employees/#{priya.id}", params: { employee: { phone: "+91-98765-43210" } },
+        as: :json, headers: authentication_headers(employee_user)
+
+      expect(response).to have_http_status(:ok)
+      expect(priya.reload.phone).to eq("+91-98765-43210")
+    end
+
+    it "rejects read-only fields sent by the employee (AC-02, TC-S05-02)" do
+      patch "/api/v1/employees/#{priya.id}",
+        params: { employee: { phone: "+91-1", work_email: "new@demo.test", job_title: "CTO" } },
+        as: :json, headers: authentication_headers(employee_user)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body["error"]).to include("code" => "read_only_fields",
+        "details" => %w[work_email job_title])
+      expect(priya.reload).to have_attributes(phone: nil, job_title: "Engineer")
+    end
+
+    it "returns contact fields and editable for the profile owner" do
+      priya.update!(phone: "+91-98765-43210")
+
+      get "/api/v1/employees/#{priya.id}", headers: authentication_headers(employee_user)
+
+      expect(response.parsed_body["data"]).to include("editable" => true, "phone" => "+91-98765-43210")
+    end
+
+    it "marks the profile as not editable for a manager" do
+      manager_user = create(:user)
+      priya.update!(manager: create(:employee, user: manager_user))
+
+      get "/api/v1/employees/#{priya.id}", headers: authentication_headers(manager_user)
+
+      expect(response.parsed_body["data"]["editable"]).to be(false)
+      expect(response.parsed_body["data"]).not_to have_key("phone")
     end
   end
 

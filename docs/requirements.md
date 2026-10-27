@@ -2,11 +2,11 @@
 
 | Field | Value |
 |---|---|
-| Version | 0.3 (Demo scope, decisions applied) |
-| Date | 2026-10-24 |
+| Version | 0.4 (Demo scope, decisions applied) |
+| Date | 2026-10-27 |
 | Status | Draft for review |
 | Scope | Demo application: candidates, employee hierarchy, HR team |
-| Supersedes | v0.2 (demo scope), v0.1 (enterprise scope) |
+| Supersedes | v0.3 (demo scope), v0.2 (demo scope), v0.1 (enterprise scope) |
 | Companion documents | `docs/product-stories.md` (stories and test cases), `docs/test-plan.md` (sequential test execution) |
 
 ---
@@ -34,10 +34,12 @@ payroll, benefits, or identity platform.
 | Compensation | **Component breakup supplied in the HR Excel**; **annual CTC** is the sum of the components |
 | Payroll | Monthly Excel payout list; unpaid leave **automatically reduces** pay; no tax or deductions |
 | Verification | None; data from Excel and forms is accepted as entered |
-| Attendance | CSV with employee ID, first-in timestamp, and last-out timestamp |
+| Attendance | Overnight CSV upload with employee ID, first-in timestamp, and last-out timestamp |
+| Leave | Overnight CSV upload with employee ID, leave type, start date, end date, reason, status |
 | Email | **Local SMTP only** (localhost) for the demo |
 | Queries | **Removed** from the demo; no helpdesk or HR letter feature |
-| Integrations | Email and time & attendance CSV only |
+| Integrations | Email, leave CSV, and time & attendance CSV only |
+| Story order | Hiring, onboarding, and offboarding moved to the last phases (S12–S18) |
 
 ---
 
@@ -167,12 +169,12 @@ Priority: **M** = must (demo), **S** = should, **C** = could.
 | XC-03 | Role-based access for Candidate, Employee, Manager, and HR | M | Candidates see only their own applications; managers cannot access employees outside their subtree |
 | XC-04 | Email notifications for approvals, applications, onboarding, offboarding, and payroll | M | Every defined event sends one email through the local SMTP server |
 | XC-05 | Minimal validation; no verification workflows | M | Invalid required fields are blocked; no identity/document verification step exists |
-| XC-06 | Excel import and export (CSV/XLSX) | M | 10,000 employee rows import in under 10 minutes with a row-level error report |
+| XC-06 | Excel/CSV import and export (CSV/XLSX) | M | 10,000 employee rows import in under 10 minutes with a row-level error report; leave and attendance arrive via overnight CSV |
 | XC-07 | Search and filter employees, candidates, and applications | M | Search respects the user's access scope |
 | XC-08 | Document upload for contracts, IDs, and CVs | M | Files are stored against the right record and access-checked |
 | XC-09 | Lightweight audit history for changes and approvals | M | HR can see who changed a field, when, and the previous value |
 | XC-10 | HR-configurable basics: leave types and entitlements, departments, job openings, email templates | M | HR can edit these in the app without a deployment |
-| XC-11 | Responsive UI usable on mobile for leave and approvals | S | Leave request and approval complete on a 375 px viewport |
+| XC-11 | Responsive UI usable on mobile for leave and approvals | S | Leave CSV upload and manager dashboard complete on a 375 px viewport |
 | XC-12 | Simple org chart view of the hierarchy | S | Chart reflects the current manager relationships and can be filtered by country/department |
 
 ---
@@ -295,24 +297,22 @@ Account Number, Monthly Gross, Unpaid Leave Deduction, Adjustments, Total Amount
 
 ### 6.5 Leave management
 
-**Objective:** Simple leave requests and balances, approved through the reporting hierarchy.
-Leave types are earned, sick, casual, and unpaid. No country policies.
+**Objective:** Leave processed via overnight CSV upload. Balances update from approved leave;
+unpaid leave is flagged for payroll deduction. Leave types are earned, sick, casual, and unpaid.
+No country policies.
 
 | ID | Requirement | Priority | Acceptance criteria (summary) |
 |---|---|---|---|
 | LVE-01 | HR configures the three balanced types (earned, sick, casual) and their default annual entitlement; unpaid leave has no balance | M | New employees receive default balances for the current year |
 | LVE-02 | HR can override an individual employee's entitlement and adjust balances with a reason | M | Adjustment appears in the employee's balance history |
-| LVE-03 | Employee requests leave with type, start date, end date, and reason | M | Invalid overlaps and dates outside employment are blocked |
-| LVE-04 | Balance check at request time | M | Earned, sick, and casual leave cannot exceed the remaining balance; unpaid leave has no limit |
-| LVE-05 | Route the request to the employee's direct manager (or HR when no manager exists) | M | Approver matches the hierarchy rules R-09 to R-11 |
-| LVE-06 | Manager approves or rejects with an optional comment | M | Requester receives an email; decision is audit-logged |
-| LVE-07 | Block self-approval and re-route on manager change | M | A manager's own request goes to their manager; reassignment updates pending requests |
-| LVE-08 | HR override and cancellation with reason | M | HR can approve, reject, or cancel any request; reason is required |
+| LVE-03 | Leave CSV includes employee ID, leave type, start date, end date, reason, and status | M | Invalid overlaps and dates outside employment are rejected per row |
+| LVE-04 | Balance check at import time | M | Earned, sick, and casual leave cannot exceed the remaining balance; unpaid leave has no limit |
+| LVE-05 | Leave status comes from the CSV (pending/approved/rejected) | M | Approved status matches hierarchy routing rules |
+| LVE-06 | Approved leave reduces the balance; rejected leave does not | M | Balance updates are audit-logged |
+| LVE-07 | Re-uploading the same employee/date updates the record | M | No duplicate leave records are created |
 | LVE-09 | Working-day calculation, Monday to Friday, no holiday calendar | M | Weekends are excluded; no country holidays are considered |
-| LVE-10 | Team calendar showing approved leave for the manager's subtree | M | Calendar respects employee privacy labels |
 | LVE-11 | Employee leave ledger: entitlement, adjustments, used, remaining | M | Ledger totals equal the displayed balance |
 | LVE-12 | Balances reset on 1 January; no carryover | M | New year creates fresh balances; prior year remains viewable |
-| LVE-13 | Notify manager and employee on submission, decision, and cancellation | M | Notification emails are sent for every state change |
 | LVE-14 | Unpaid leave is flagged for payroll deduction | M | Unpaid leave days in a payroll month appear as an automatic deduction |
 
 **Business rules**
@@ -322,7 +322,6 @@ Leave types are earned, sick, casual, and unpaid. No country policies.
 - BR-LVE-03 Only approved leave counts against the balance.
 - BR-LVE-04 Cancelling approved leave returns the days to the balance.
 - BR-LVE-05 Country does not affect leave types, entitlement, or approval.
-- BR-LVE-06 Sick leave requires no medical certificate verification; an optional attachment is allowed.
 - BR-LVE-07 Unpaid leave reduces monthly pay automatically; paid leave does not.
 
 ---
@@ -496,14 +495,15 @@ Legend: **✓** allowed · **T** team/subtree scope · **—** denied.
 ### MVP (all must requirements)
 
 1. **Foundation:** auth for candidates and employees, roles, hierarchy, employee records, Excel import, audit history.
-2. **Recruitment:** candidate registration/login, job openings, applications, pipeline, offer, conversion to employee with reference.
-3. **Onboarding:** checklist, documents, account invite, activation.
-4. **Leave:** earned/sick/casual/unpaid, balances with yearly reset, hierarchy approvals, team calendar, unpaid leave flag for payroll.
-5. **Attendance:** CSV import, exceptions, corrections, monthly reconciliation.
-6. **Payroll:** monthly run, CTC/components, unpaid leave deduction, adjustments, review, Excel payout export, history.
-7. **Offboarding:** checklist, access deactivation, final pay inputs.
-8. **Reporting:** headcount, joiners/leavers, attrition, leave, attendance, payroll, recruitment pipeline, manager and HR dashboards.
-9. **Seed data:** 10,000 employees, 100 candidates, and 2 months of attendance generated with Faker.
+2. **Employee self-service:** directory, contact updates, change history.
+3. **Leave:** overnight CSV upload for earned/sick/casual/unpaid leave, balances with yearly reset, unpaid leave flag for payroll.
+4. **Attendance:** overnight CSV import, exceptions, corrections, monthly reconciliation.
+5. **Payroll:** monthly run, CTC/components, unpaid leave deduction, adjustments, review, Excel payout export, history.
+6. **Reporting:** headcount, joiners/leavers, attrition, leave, attendance, payroll, recruitment pipeline, manager and HR dashboards.
+7. **Seed data:** 10,000 employees, 100 candidates, and 2 months of attendance generated with Faker.
+8. **Recruitment:** candidate registration/login, job openings, applications, pipeline, offer, conversion to employee with reference.
+9. **Onboarding:** checklist, documents, account invite, activation.
+10. **Offboarding:** checklist, access deactivation, final pay inputs.
 
 ### Should/could (post-demo)
 
@@ -514,9 +514,10 @@ Legend: **✓** allowed · **T** team/subtree scope · **—** denied.
 
 - Seed data loads: 10,000 employees across India, USA, and Canada with a multi-level hierarchy,
   100 candidates with applications, and 2 months of attendance.
-- End-to-end flow demonstrated: candidate registers → applies → hired → onboarding → leave →
-  attendance import → payroll Excel → offboarding.
-- Leave approval follows the hierarchy, including a manager approving upwards.
+- End-to-end flow demonstrated: candidate registers → applies → hired → onboarding → leave CSV
+  upload → attendance CSV import → payroll Excel → offboarding.
+- Leave processed via overnight CSV; balances update from approved leave; unpaid leave flagged
+  for payroll deduction.
 - Excel import of 10,000 rows completes within the performance target.
 - Payroll Excel opens correctly with bank details and unpaid leave deductions.
 - Email notifications are visible in the local mail catcher.

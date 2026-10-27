@@ -3,7 +3,7 @@
 | Document | Contents |
 |---|---|
 | [`requirements.md`](requirements.md) | Product requirements for the HR demo (v0.3): scope, roles, hierarchy, data model, 119 requirements, decisions |
-| [`product-stories.md`](product-stories.md) | 22 sequential stories (S01–S22), each with a testable feature, acceptance criteria, and 158 test cases |
+| [`product-stories.md`](product-stories.md) | 18 sequential stories (S01–S18), each with a testable feature, acceptance criteria, and 143 test cases |
 | [`test-plan.md`](test-plan.md) | Sequential execution plan, environments, accounts, regression pack, end-to-end script, traceability, defect severity |
 | [`api.md`](api.md) | JSON conventions, error envelope, and endpoint contracts as they are implemented |
 
@@ -22,7 +22,29 @@
 
 ## Current stage
 
-S01, S02, and S03 are complete. S03 delivers authoritative employee records:
-- Backend: `Employee`, append-only `Compensation` and `CompensationComponent` models, annual CTC derived from component sums, `Employees::Create` service, HR-only list and create endpoints, and HR/self profile show endpoint with `EmployeePolicy`.
-- Frontend: `employees` API client, `CompensationInputs` with dynamic components and auto-calculated annual CTC, `useNewEmployeeForm` hook, `EmployeesPage` list, `NewEmployeePage` creation form, and `EmployeeProfilePage` read-only bank/compensation view.
-All 134 backend specs and 51 frontend tests pass. S04 (Reporting hierarchy and manager scope) is next. Implementation follows the story order in `product-stories.md`.
+S01–S04 are complete and committed. S05 (Employee self-service and directory) is next.
+
+Completed stories:
+- S01 — Sign-in and role-based access: auth, JWT, roles, sessions, React sign-in, protected routing
+- S02 — HR configuration: countries, departments, leave types
+- S03 — Create and manage employee records: compensation components, derived CTC, bank details, profiles
+- S04 — Reporting hierarchy and manager scope: manager assignment, cycles, subtree views
+
+Remaining stories (S05–S19):
+- S05 — Employee self-service and directory
+- S06 — Leave CSV upload (overnight)
+- S07 — Attendance CSV upload (overnight)
+- S08 — Monthly payroll run
+- S09 — Payroll Excel export and history
+- S10 — Reporting dashboards and exports
+- S11 — Demo seed data and scale verification
+- S12 — Candidate registration, login, and profile
+- S13 — Job openings
+- S14 — Job applications
+- S15 — Recruitment pipeline, interviews, and offers
+- S16 — Convert a hired candidate to an employee
+- S17 — Onboarding checklist, invite, and activation
+- S18 — Offboarding and access deactivation
+- S19 — Employee change history (deferred from S05)
+
+Implementation follows the story order in `product-stories.md`.
