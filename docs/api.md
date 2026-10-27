@@ -675,3 +675,87 @@ blocking issues.
   "meta": { "page": 1, "per_page": 25, "total": 1 }
 }
 ```
+
+## S10 reports
+
+Reports are read-only. HR sees every employee; a manager sees their reporting subtree; other
+employees get `403`. No report returns salary, CTC, or bank data.
+
+**XLSX export:** add `format=xlsx` (or use a `.xlsx` path) to any report URL with the same
+filters to download `<report>-YYYY-MM-DD.xlsx`. The file holds every row matching the filters (not
+only the current page) with the same values as the JSON; headcount adds a `Total` row and payroll
+amounts are numbers. Export permissions are the same as the JSON report.
+
+### GET `/api/v1/reports/headcount`
+
+Query: `group_by` (`country`, `department`, or `manager`; required), optional `country` and
+`department_id` filters (same meaning as the employee list). `headcount` counts `active`
+employees; `onboarding` is shown separately (BR-RPT-01). Employees without a manager are grouped
+as `No manager`. An unknown `group_by` returns `422` (`invalid_group_by`).
+
+```json
+{
+  "data": [
+    { "group": "India", "headcount": 2, "onboarding": 1 },
+    { "group": "USA", "headcount": 1, "onboarding": 0 }
+  ],
+  "meta": { "group_by": "country", "headcount": 3, "onboarding": 1 }
+}
+```
+
+### GET `/api/v1/reports/joiners`
+
+Query: `from` and `to` (ISO dates, inclusive, `from` on or before `to`; required), optional
+`country`, `department_id`, `page`, `per_page`. Employees whose start date falls in the period,
+ordered by start date then employee ID; `id` links to the employee record. A missing, invalid, or
+reversed period returns `422` (`invalid_period`).
+
+```json
+{
+  "data": [
+    { "id": 12, "employee_id": "EMP300", "name": "Nisha Rao", "country": "India",
+      "department": "Engineering", "start_date": "2026-11-20" }
+  ],
+  "meta": { "page": 1, "per_page": 25, "total": 1 }
+}
+```
+
+### GET `/api/v1/reports/leave`
+
+Query: `year` (default: current year), optional `country`, `department_id`, `page`, `per_page`.
+One row per employee in employee ID order: entitled, used, and remaining days for each
+balance-tracked leave type (same values as `GET /employees/:id/leave_balances`) and unpaid leave
+days taken in the year. `meta.totals` sums every filtered employee, not only the current page. The XLSX export
+has columns Employee ID, Name, `<type> entitled`/`used`/`remaining` per tracked type, Unpaid days,
+and a final `Total` row equal to `meta.totals`.
+
+```json
+{
+  "data": [
+    { "id": 3, "employee_id": "EMP102", "name": "Priya Sharma",
+      "balances": [ { "leave_type": "Earned", "entitled": 6, "used": 2, "remaining": 4 } ],
+      "unpaid_days": 1 }
+  ],
+  "meta": {
+    "page": 1, "per_page": 25, "total": 1, "year": 2026,
+    "totals": { "balances": [ { "leave_type": "Earned", "entitled": 6, "used": 2, "remaining": 4 } ], "unpaid_days": 1 }
+  }
+}
+```
+
+### GET `/api/v1/reports/payroll`
+
+HR only (managers and employees get `403`). Query: `year` (default: current year), optional
+`country`. Totals from `generated` and `paid` runs only (drafts excluded), grouped by month,
+country, and currency, never converted (BR-RPT-03). Each row matches that run's `totals` entry in
+`GET /payroll_runs/:id`.
+
+```json
+{
+  "data": [
+    { "month": "2026-11", "country": "India", "currency": "INR", "employees": 2,
+      "monthly_gross": "150000.00", "unpaid_deduction": "10000.00", "total": "140000.00" }
+  ],
+  "meta": { "year": 2026 }
+}
+```

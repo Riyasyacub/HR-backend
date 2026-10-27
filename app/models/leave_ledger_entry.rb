@@ -13,8 +13,12 @@ class LeaveLedgerEntry < ApplicationRecord
   end
 
   def self.summary(employee:, year:)
-    totals = where(employee:, year:).group(:leave_type_id, :entry_type).sum(:days)
-    LeaveType.where.not(default_entitlement: nil).order(:id).map do |leave_type|
+    balance_rows(where(employee:, year:).group(:leave_type_id, :entry_type).sum(:days))
+  end
+
+  # totals is keyed by [leave_type_id, entry_type]; pass tracked_types when building many rows.
+  def self.balance_rows(totals, tracked_types = LeaveType.where.not(default_entitlement: nil).order(:id))
+    tracked_types.map do |leave_type|
       entitled = totals.fetch([ leave_type.id, "entitlement" ], 0)
       used = -(totals.fetch([ leave_type.id, "used" ], 0) + totals.fetch([ leave_type.id, "reversal" ], 0))
       { "leave_type" => leave_type.name, "entitled" => entitled, "used" => used, "remaining" => entitled - used }

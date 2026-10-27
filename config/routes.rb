@@ -19,6 +19,10 @@ Rails.application.routes.draw do
         member { get :leave_balances }
       end
       resources :leave_records, only: %i[index show]
+      get "reports/headcount", to: "reports#headcount"
+      get "reports/joiners", to: "reports#joiners"
+      get "reports/leave", to: "reports#leave"
+      get "reports/payroll", to: "reports#payroll"
       resources :payroll_runs, only: %i[index create show] do
         member do
           post :recalculate

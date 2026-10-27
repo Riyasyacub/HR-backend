@@ -1190,3 +1190,93 @@ Notes: Follow-up to the constraint check: the running Rails server had been star
 > approved, continue to the next chunk
 
 Notes: S09-4 approved; S09 signed off (smoke pack deferred to the end). CLAUDE.md and AGENTS.md current state: S09 complete, S10 next. Committed S09 in both repos (CLAUDE.md stays untracked).
+
+### Start S10
+
+> yes
+
+Notes: In progress.
+
+### S10 decisions
+
+> 1A, 2A, 3A, 4 - yes, 5A, 6 - ok, 7 - ok, 8A
+
+Notes: S10 scope recorded in docs/product-stories.md (headcount, joiners, leave report, payroll totals, XLSX export, dashboard tiles; leavers/attrition to S18, pipeline to S15, trend snapshots, CSV, pending approvals and export audit deferred; managers get subtree headcount/joiners/leave). Chunk S10-1: Reports::Headcount query object (app/queries/reports/headcount.rb; one grouped query by country/department/manager with active and onboarding counts), ReportPolicy#headcount? (HR or manager), Api::V1::ReportsController#headcount using the Employee policy scope, GET /api/v1/reports/headcount, docs/api.md S10 section. Specs: spec/requests/api/v1/reports/headcount_spec.rb (6). Red confirmed (no route). RSpec 296/0, RuboCop clean, Brakeman 0. Production lines about 40.
+
+### Continue S10-2
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-2. Reports::Joiners (app/queries/reports/joiners.rb; start date in period, filters, preload department); ReportsController#joiners (ISO from/to, 422 invalid_period, paginated list), page/per_page helpers copied (fourth copy, extraction suggested); ReportPolicy#joiners?; GET /api/v1/reports/joiners; docs/api.md. Specs: spec/requests/api/v1/reports/joiners_spec.rb (7, incl. N+1). Red confirmed (7 failing). RSpec 303/0, RuboCop clean, Brakeman 0. Production lines about 32.
+
+### Continue S10-3
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-3. Refactor: LeaveLedgerEntry.balance_rows extracted from summary (same formula, optional preloaded types). Reports::Leave (app/queries/reports/leave.rb): per-employee balances and unpaid days for the page with one grouped ledger query and one unpaid count; totals across all filtered employees. ReportsController#leave (year, filters, pagination); ReportPolicy#leave?; GET /api/v1/reports/leave; docs/api.md. Specs: spec/requests/api/v1/reports/leave_spec.rb (6, incl. reconciliation with leave_balances and query count). Red confirmed (6 failing). RSpec 309/0, RuboCop clean, Brakeman 0. Production lines about 48.
+
+### Continue S10-4
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-4. Reports::Payroll (app/queries/reports/payroll.rb): one grouped query over lines of generated/paid runs in the year, by month, country, currency, amounts as 2-decimal strings. ReportsController#payroll (year, country filter); ReportPolicy#payroll? HR only; GET /api/v1/reports/payroll; docs/api.md. Specs: spec/requests/api/v1/reports/payroll_spec.rb (5, incl. reconciliation with run totals). Red confirmed (5 failing). Production lines about 24.
+
+### Continue S10-5
+
+> approved, continue to the next chunk
+
+Notes: Split into S10-5a and S10-5b to stay under 50 lines. Chunk S10-5a: config/initializers/mime_types.rb registers :xlsx; Reports::Sheet (app/queries/reports/sheet.rb) generic header + rows workbook; ReportsController XLSX branches for headcount (Total row), joiners (all filtered rows via pluck, not paged) and payroll (numeric amounts), send_report helper; docs/api.md export note. Specs: spec/requests/api/v1/reports/exports_spec.rb (4, incl. TC-S10-09 and TC-S10-10). Red confirmed (4 failing). Production lines about 38.
+
+### Continue S10-5b
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-5b. Reports::Leave#export_headers and #export_rows (employee batches of 1000 in employee ID order, Total row from totals); XLSX branch in ReportsController#leave; docs/api.md. Specs: spec/queries/reports/leave_spec.rb (1, batch size 2), exports_spec leave (2). Red confirmed (3 failing). Production lines about 17.
+
+### Continue S10-6
+
+> approved, continue to the next chunk
+
+Notes: Frontend split into smaller chunks. Chunk S10-6 (frontend): new src/api/reports.ts (getHeadcount, shared query builder dropping empty filters); new src/components/reports/HeadcountReport.tsx (Group by select, Country input, Apply, table with Total row, error alert). Tests: src/api/reports.test.ts (1), HeadcountReport.test.tsx (3). Red confirmed. Vitest 115 passed, typecheck and lint clean. Production lines about 45.
+
+### Continue S10-7
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-7 (frontend); Joiners tab moved to S10-8 to stay under 50 lines. downloadReport in src/api/reports.ts (same filters plus format=xlsx, blob); new src/components/reports/DownloadReportButton.tsx (download, error alert); HeadcountReport renders it with the applied filters. Tests: api (1), DownloadReportButton (2), HeadcountReport assertion (1). Red confirmed. Vitest 118 passed, typecheck and lint clean. Production lines about 32.
+
+### Continue S10-8
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-8 (frontend). getJoiners and Joiner/JoinersPage types in src/api/reports.ts; new src/components/reports/JoinersReport.tsx (current-month default, From/To/Country with Apply, table linking names to /employees/:id, Previous/Next paging, Download XLSX with applied filters, API error message). Tests: api (1), JoinersReport (4). Red confirmed. Vitest 123 passed, typecheck and lint clean. Production lines about 72 (over the limit); proposed extracting a shared Pager when the leave tab adds the third copy.
+
+### Continue S10-9
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-9 (frontend). Refactor: new src/components/Pager.tsx used by PayrollLinesTable and JoinersReport (existing paging tests green; unused Button import removed). getLeaveReport and leave types in src/api/reports.ts; new src/components/reports/LeaveReport.tsx (Year/Country with Apply, per-type entitled/used/remaining and unpaid days, Total row from meta.totals, Pager, Download XLSX). Lint purity warning fixed with lazy initial state. Tests: Pager (2), api (1), LeaveReport (2). Red confirmed. Vitest 128 passed, typecheck and lint clean. Production lines about 58 (Pager 11, refactor net -8, API 11, LeaveReport 44).
+
+### Continue S10-10
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-10 (frontend); Reports page moved to S10-11. getPayrollReport and PayrollTotal types in src/api/reports.ts; new src/components/reports/PayrollReport.tsx (Year/Country with Apply, totals per month/country/currency, empty-year message, Download XLSX). Tests: api (1), PayrollReport (3). Red confirmed. Vitest 132 passed, typecheck and lint clean. Production lines about 55.
+
+### Continue S10-11
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-11 (frontend). New src/pages/ReportsPage.tsx (Headcount, Joiners, Leave tabs; Payroll tab for HR only); App.tsx RequireReportAccess guard (HR or manager) and /reports route; DashboardPage Reports link for HR and managers. Tests: ReportsPage (2), App routing (2; reports API mocked in App.test). Red confirmed. Vitest 136 passed, typecheck and lint clean. Production lines about 38.
+
+### Continue S10-12
+
+> approved, continue to the next chunk
+
+Notes: Chunk S10-12 (frontend). Refactor: currentMonthPeriod moved to src/lib/period.ts (JoinersReport uses it). New src/components/DashboardTiles.tsx (HR: headcount, onboarding, joiners this month, latest payroll run; manager: team headcount, joiners this month; each tile links to its list; uses existing headcount, joiners and payroll runs endpoints) rendered on DashboardPage for HR and managers. Tests: DashboardTiles (3), App employee dashboard makes no report calls (1); App.test mocks reports/payroll APIs. Red confirmed (3 failing; then fixed tile link names needing a space). Vitest 139 passed, typecheck and lint clean; RSpec unchanged. Production lines about 46.
+
+### S10 sign-off
+
+> approved, continue to the next chunk
+
+Notes: S10-12 approved; S10 signed off (smoke pack deferred to the end). CLAUDE.md and AGENTS.md current state: S10 complete, S11 next. Committed S10 in both repos (CLAUDE.md stays untracked).

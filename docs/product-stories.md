@@ -426,6 +426,12 @@ As an HR user, I want to export the approved monthly payroll to Excel and re-dow
 | Depends on | S08, S09 |
 | Covers | RPT-01 to RPT-12, BR-RPT-01 to BR-RPT-03 |
 
+**Scope in this build** (agreed 2026-10-27)
+- In: headcount, joiners, leave report (entitlement, used, remaining, unpaid days), payroll totals from generated/paid runs, XLSX export, HR and manager dashboard tiles for those numbers.
+- Moved: leavers and attrition (AC-02 leavers, AC-03, TC-S10-02 leaver, TC-S10-03) to S18; pipeline report (TC-S10-06) to the end of S15; candidate denial (TC-S10-08) is verified once candidates exist (S12).
+- Deferred: pending approvals, headcount trend snapshots (RPT-11), CSV export, export audit logging (AC-07 logging part). Attendance is cut with S07.
+- Managers see headcount, joiners and leave for their subtree; payroll totals and the HR dashboard are HR only.
+
 **Story**
 As an HR user or manager, I want standard reports and dashboards, so that I can answer headcount, attrition, leave, payroll, and hiring questions without Excel.
 
