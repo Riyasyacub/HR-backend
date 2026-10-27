@@ -531,6 +531,58 @@ RSpec.describe "Employees", type: :request do
     end
   end
 
+  describe "GET /api/v1/employees/:id/leave_balances" do
+    let(:earned) { create(:leave_type, name: "Earned", default_entitlement: 6) }
+    let(:priya) { create(:employee) }
+
+    def get_balances(headers, params = {})
+      get("/api/v1/employees/#{priya.id}/leave_balances", params:, headers:)
+    end
+
+    before do
+      create(:leave_ledger_entry, employee: priya, leave_type: earned, year: 2026, days: 6)
+      create(:leave_ledger_entry, employee: priya, leave_type: earned, year: 2026, entry_type: "used", days: -1)
+      create(:leave_ledger_entry, employee: priya, leave_type: earned, year: 2025, days: 3)
+    end
+
+    it "returns the current year's balances for HR" do
+      travel_to(Date.new(2026, 10, 28)) { get_balances(hr_headers) }
+
+      expect(response.parsed_body).to eq(
+        "data" => [ { "leave_type" => "Earned", "entitled" => 6, "used" => 1, "remaining" => 5 } ]
+      )
+    end
+
+    it "returns the requested year's balances" do
+      get_balances(hr_headers, year: 2025)
+
+      expect(response.parsed_body["data"]).to eq([ { "leave_type" => "Earned", "entitled" => 3, "used" => 0, "remaining" => 3 } ])
+    end
+
+    it "lets a manager see a subtree employee's balances and denies others" do
+      manager_user = create(:user)
+      priya.update!(manager: create(:employee, user: manager_user))
+      outsider_user = create(:user).tap { create(:employee, user: _1) }
+
+      get_balances(authentication_headers(manager_user))
+      expect(response).to have_http_status(:ok)
+
+      get_balances(authentication_headers(outsider_user))
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it "reads the ledger in one query" do
+      create(:leave_type, name: "Sick")
+      headers = hr_headers
+      queries = []
+      callback = ->(*, payload) { queries << payload[:sql] if payload[:sql].include?("leave_ledger_entries") }
+
+      ActiveSupport::Notifications.subscribed(callback, "sql.active_record") { get_balances(headers) }
+
+      expect(queries.size).to eq(1)
+    end
+  end
+
   describe "GET /api/v1/employees/team" do
     def get_team(headers = hr_headers)
       get "/api/v1/employees/team", headers:

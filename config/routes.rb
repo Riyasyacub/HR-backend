@@ -16,6 +16,11 @@ Rails.application.routes.draw do
       get "me", to: "me#show"
       resources :employees, only: %i[index create show update] do
         collection { get :team }
+        member { get :leave_balances }
+      end
+      resources :leave_records, only: %i[index show]
+      resources :leave_imports, only: %i[create show] do
+        collection { get :template }
       end
       namespace :settings do
         resources :countries, only: :index

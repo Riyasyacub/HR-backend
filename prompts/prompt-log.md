@@ -907,3 +907,118 @@ Notes: User stopped the smoke pack run before it started (dev server and DB comm
 > commit S05
 
 Notes: Committed S05 in both repos without the regression smoke pack (user skipped it). CLAUDE.md left uncommitted (not part of S05).
+
+### Start S06 and recommend CSV format
+
+> start S06, give me a recommended format for the CSV too
+
+Notes: Read S06 story and LVE requirements. Proposed CSV format (employee_id, leave_type, start_date, end_date, status, reason; ISO dates; header required) and a chunk outline, and asked 5 blocking questions (processing mode, balance ledger model, re-upload key, pending leave vs balance, frontend screens). No code written.
+
+### S06 scope decisions
+
+> Since this is a overnight CSV, just get that the employee is leave for today or not. and its reason and type.
+> pending/rejected is not required as of now, since we will upload only approved leave
+>
+> 1. B
+> 2. B
+> 3. A
+> 4. since only approved leaves are uploaded, everything counts.
+> 5. A
+
+Notes: Corrects the proposed S06 CSV format: one row per employee on leave for a single day, approved only, no status column. Decisions: background job (Solid Queue), entitlements granted on employee creation plus backfill, re-upload key employee + date, all rows count against balance, screens = HR upload + scoped leave list. Asked follow-up questions; no code written.
+
+### S06 follow-up decisions
+
+> 1A, 2A, 3A
+
+Notes: Superseded by the next entry (user interrupted and changed 3A to 3B).
+
+### S06 follow-up decisions (correction)
+
+> 1A, 2A, 3B
+
+Notes: Corrects the previous entry: uploaded CSV stored with Active Storage instead of a text column. Updated S06 story text (CSV format employee_id,leave_date,leave_type,reason; approved only; background job; entitlements on employee creation). Chunk S06-1: Active Storage install migration; migration for leave_imports, leave_records (unique employee+date), leave_ledger_entries (one entitlement per employee/type/year, days nonzero, entry_type check); models LeaveImport, LeaveRecord, LeaveLedgerEntry; 12 model specs + factories + spec/fixtures/files/leave_sample.csv. Red confirmed (uninitialized constants). rspec 182/0, RuboCop clean. Frontend not touched.
+
+### Continue S06-2
+
+> approved, continue with S06-2
+
+Notes: Chunk S06-2. Added Leaves::GrantEntitlements (app/services/leaves/grant_entitlements.rb: grants default entitlement per balanced type per year, skips unpaid/zero, idempotent via find_or_create_by plus unique index rescue, backfill over find_each), rake leaves:grant_entitlements[year] (lib/tasks/leaves.rake), and a call from Employees::Create for the current year. Specs: spec/services/leaves/grant_entitlements_spec.rb (4), 1 new example in spec/services/employees/create_spec.rb. Red confirmed (uninitialized constant). rspec 187/0, RuboCop clean. Production lines about 28.
+
+### Continue S06-3
+
+> approved, continue with S06-3
+
+Notes: In progress.
+
+### Approve csv gem
+
+> A
+
+Notes: Approved option A: added gem "csv" (3.3.6) to Gemfile. Chunk S06-3: Leaves::CsvParser (app/services/leaves/csv_parser.rb) validates required headers (employee_id, leave_date, leave_type; any order/case, extras ignored), malformed CSV, and per-row unknown employee, YYYY-MM-DD date, unknown leave type; employees and leave types loaded once. Specs: spec/services/leaves/csv_parser_spec.rb (7, incl. query-count). Red confirmed. rspec 194/0, RuboCop clean. Production lines about 46.
+
+### Ask about roo gem
+
+> can we use roo gem? it will be more easy right?
+
+Notes: Question only, no code changed. Recommended keeping the csv gem for CSV; roo suits Excel input (adds rubyzip/nokogiri) and could be considered if Excel uploads are needed later.
+
+### Move leave upload from CSV to Excel
+
+> then move from csv to excel, since excel is most commonly used
+
+Notes: Switched the leave upload from CSV to Excel (.xlsx). Added gem "roo" (4.0.0; brings rubyzip, nokogiri already present); kept gem "csv" for S07 attendance. Replaced Leaves::CsvParser with Leaves::SheetParser (app/services/leaves/sheet_parser.rb: first sheet, headers any order/case, Excel date cells or YYYY-MM-DD text, blank rows skipped, invalid workbook rejected). LeaveImport attachment renamed csv -> file, validated as .xlsx content type and <= 5 MB. Test helper spec/support/xlsx_builder.rb builds .xlsx in memory; removed spec/fixtures/files/leave_sample.csv. Specs: sheet_parser_spec (9), leave_import_spec (5). Red confirmed. rspec 198/0, RuboCop clean. Docs updated (product-stories S06 renamed "Leave Excel upload", README, test-plan, requirements). Production lines about 72 total for the redone chunk (sheet_parser 50 + leave_import changes about 14 + Gemfile 1).
+
+### Start S06-4 and add leave template download
+
+> start next chunk, also there should be place to download the template of leave excel
+
+Notes: Chunk S06-4. Added Leaves::ImportSheet (app/services/leaves/import_sheet.rb): marks import processing, parses via SheetParser, saves each row inside employee.with_lock (find_or_initialize by employee+date), charges one day per balanced row (insufficient balance rejects and rolls back the row), reverses the old type when a re-upload changes type, records row errors and counts, marks failed on header errors. Specs: spec/services/leaves/import_sheet_spec.rb (9). Red confirmed. rspec 207/0, RuboCop clean. Production lines about 56. Template download deferred to S06-5 (asked how to produce the .xlsx).
+
+### Continue S06-5 with caxlsx template
+
+> approved, B, continue with S06-5
+
+Notes: Approved option B (caxlsx) for the template; template moved to S06-6 to keep chunks small. Chunk S06-5: ImportLeaveSheetJob (runs only when import is queued), LeaveImportPolicy (HR only), Api::V1::LeaveImportsController (POST create -> 202 and enqueues job; GET show; 422 validation_failed for missing/non-xlsx file), route resources :leave_imports. Specs: spec/jobs/import_leave_sheet_job_spec.rb (2), spec/requests/api/v1/leave_imports_spec.rb (7). Red confirmed. rspec 216/0, RuboCop clean, Brakeman 0 warnings. docs/api.md: S06 import contract. Production lines about 41.
+
+### Continue S06-6
+
+> approved, continue with S06-6
+
+Notes: Chunk S06-6. Added gem "caxlsx" (4.5.0). Leaves::Template (app/services/leaves/template.rb) builds leave_template.xlsx (headers, example row, leave_type dropdown from LeaveType). GET /api/v1/leave_imports/template (HR only) in leave_imports_controller.rb, policy template?, collection route. Development Solid Queue: config/database.yml development primary + queue (incubyte_development_queue), development.rb queue_adapter :solid_queue + connects_to. Smoke check: db:prepare created queue DB; bin/jobs registered Supervisor, Dispatcher, Worker. Specs: spec/services/leaves/template_spec.rb (2), 2 request examples. Red confirmed. rspec 220/0, RuboCop clean, Brakeman 0. docs/api.md: template endpoint. Production lines about 32.
+
+### Continue S06-7
+
+> approved, continue to next chunk
+
+Notes: Chunk S06-7. LeaveRecordPolicy with Scope (HR all; manager own + subtree; employee own; no employee record none) and show? via the scope; Api::V1::LeaveRecordsController index (leave_date filter, pagination, includes employee and leave_type) and show; routes. Specs: spec/requests/api/v1/leave_records_spec.rb (9, incl. TC-S06-09 and query count). The first red run failed because of a spec bug (`headers:` at end of line swallowed the next line), not the missing endpoint; fixed. rspec 229/0, RuboCop clean, Brakeman 0. docs/api.md updated. Production lines about 47.
+
+### Continue S06-8
+
+> approved, continue to next chunk
+
+Notes: Chunk S06-8 (frontend). src/api/auth.ts: skip JSON content type for FormData bodies. New src/api/leaves.ts (uploadLeaveFile, getLeaveImport, downloadLeaveTemplate) and src/pages/LeaveUploadPage.tsx (template download, .xlsx upload, polls status every 2s, shows summary/row errors/failure); /leave-upload route under RequireHr in App.tsx; HR dashboard link. Tests: src/api/leaves.test.ts (2), src/pages/LeaveUploadPage.test.tsx (4). Red confirmed (missing modules). Fixed a polling bug found during review (immediate re-poll loop). Vitest 73 passed (serial), typecheck and lint clean. Production lines about 92, over the 50 limit; reported to user.
+
+### Continue S06-9
+
+> approved, continue to next chunk
+
+Notes: Chunk S06-9 (frontend). listLeaveRecords + LeaveRecord types in src/api/leaves.ts; new src/pages/LeaveRecordsPage.tsx (date filter, table with employee/date/type/reason/payroll flag, empty and error states); /leave-records route for any signed-in user; dashboard link for all roles. Tests: 1 in src/api/leaves.test.ts, 4 in src/pages/LeaveRecordsPage.test.tsx. Red confirmed (missing page). Vitest 78 passed (serial), typecheck and lint clean. Production lines about 50. S06 story now complete apart from the regression smoke pack and commit.
+
+### Leave history on employee profile
+
+> also build a section in employee show page, showing the leaves history of that employee
+
+Notes: Added leave history to the employee profile. Backend: employee_id filter on GET /api/v1/leave_records (scope still applies); 2 request specs (1 red, 1 already passing because of scoping). Frontend: listLeaveRecords takes optional employeeId; new src/components/LeaveHistory.tsx rendered at the bottom of EmployeeProfilePage (date, type, reason, payroll flag; empty and error states). Tests: LeaveHistory (2), api (1), profile page assertion. Red confirmed. rspec 231/0, RuboCop clean, Vitest 81 passed (serial), typecheck and lint clean. docs/api.md updated. Production lines about 30.
+
+### Leave balances on employee profile
+
+> show leave balances in the employee show page too
+
+Notes: Added leave balances to the employee profile. Backend: LeaveLedgerEntry.summary (one grouped query; entitled, used net of reversals, remaining per balanced type), GET /api/v1/employees/:id/leave_balances?year= (authorized as show?), member route. Frontend: getLeaveBalances in src/api/leaves.ts, new src/components/LeaveBalances.tsx shown above Leave history on EmployeeProfilePage. Tests: model summary (1), request specs (4 incl. query count and manager scope), api (1), component (2), profile assertion. Red confirmed in both repos. rspec 236/0, RuboCop clean, Vitest 84 passed (serial), typecheck and lint clean. docs/api.md updated. Production lines about 43.
+
+### Commit S06
+
+> commit S06, don't run smoke pack
+
+Notes: Committed S06 in both repos without the regression smoke pack (user skipped it). CLAUDE.md left uncommitted.

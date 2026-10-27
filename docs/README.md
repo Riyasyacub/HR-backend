@@ -32,7 +32,7 @@ Completed stories:
 
 Remaining stories (S05–S19):
 - S05 — Employee self-service and directory
-- S06 — Leave CSV upload (overnight)
+- S06 — Leave Excel upload (overnight)
 - S07 — Attendance CSV upload (overnight)
 - S08 — Monthly payroll run
 - S09 — Payroll Excel export and history

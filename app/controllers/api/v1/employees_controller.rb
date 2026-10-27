@@ -34,6 +34,12 @@ class Api::V1::EmployeesController < ApplicationController
     render json: { data: employees.map { |e| employee_json(e) } }
   end
 
+  def leave_balances
+    authorize employee, :show?
+    year = params.fetch(:year, Date.current.year).to_i
+    render json: { data: LeaveLedgerEntry.summary(employee:, year:) }
+  end
+
   def update
     authorize employee
     return render_read_only_fields(read_only_fields) if read_only_fields.any?

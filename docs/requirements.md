@@ -38,7 +38,7 @@ payroll, benefits, or identity platform.
 | Leave | Overnight CSV upload with employee ID, leave type, start date, end date, reason, status |
 | Email | **Local SMTP only** (localhost) for the demo |
 | Queries | **Removed** from the demo; no helpdesk or HR letter feature |
-| Integrations | Email, leave CSV, and time & attendance CSV only |
+| Integrations | Email, leave Excel, and time & attendance CSV only |
 | Story order | Hiring, onboarding, and offboarding moved to the last phases (S12–S18) |
 
 ---
@@ -174,7 +174,7 @@ Priority: **M** = must (demo), **S** = should, **C** = could.
 | XC-08 | Document upload for contracts, IDs, and CVs | M | Files are stored against the right record and access-checked |
 | XC-09 | Lightweight audit history for changes and approvals | M | HR can see who changed a field, when, and the previous value |
 | XC-10 | HR-configurable basics: leave types and entitlements, departments, job openings, email templates | M | HR can edit these in the app without a deployment |
-| XC-11 | Responsive UI usable on mobile for leave and approvals | S | Leave CSV upload and manager dashboard complete on a 375 px viewport |
+| XC-11 | Responsive UI usable on mobile for leave and approvals | S | Leave Excel upload and manager dashboard complete on a 375 px viewport |
 | XC-12 | Simple org chart view of the hierarchy | S | Chart reflects the current manager relationships and can be filtered by country/department |
 
 ---
@@ -305,7 +305,7 @@ No country policies.
 |---|---|---|---|
 | LVE-01 | HR configures the three balanced types (earned, sick, casual) and their default annual entitlement; unpaid leave has no balance | M | New employees receive default balances for the current year |
 | LVE-02 | HR can override an individual employee's entitlement and adjust balances with a reason | M | Adjustment appears in the employee's balance history |
-| LVE-03 | Leave CSV includes employee ID, leave type, start date, end date, reason, and status | M | Invalid overlaps and dates outside employment are rejected per row |
+| LVE-03 | Leave Excel file includes employee ID, leave type, start date, end date, reason, and status | M | Invalid overlaps and dates outside employment are rejected per row |
 | LVE-04 | Balance check at import time | M | Earned, sick, and casual leave cannot exceed the remaining balance; unpaid leave has no limit |
 | LVE-05 | Leave status comes from the CSV (pending/approved/rejected) | M | Approved status matches hierarchy routing rules |
 | LVE-06 | Approved leave reduces the balance; rejected leave does not | M | Balance updates are audit-logged |
@@ -514,7 +514,7 @@ Legend: **✓** allowed · **T** team/subtree scope · **—** denied.
 
 - Seed data loads: 10,000 employees across India, USA, and Canada with a multi-level hierarchy,
   100 candidates with applications, and 2 months of attendance.
-- End-to-end flow demonstrated: candidate registers → applies → hired → onboarding → leave CSV
+- End-to-end flow demonstrated: candidate registers → applies → hired → onboarding → leave Excel
   upload → attendance CSV import → payroll Excel → offboarding.
 - Leave processed via overnight CSV; balances update from approved leave; unpaid leave flagged
   for payroll deduction.

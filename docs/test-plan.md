@@ -34,7 +34,7 @@ behaviour created by earlier stories; skipping ahead invalidates the test data.
 | Database | PostgreSQL 18.6 on `localhost:5432` |
 | Email | Local SMTP via Mailhog (SMTP `localhost:1025`, UI `http://localhost:8025`) |
 | Browser | Chrome (current), one mobile viewport for S06/S07 |
-| File fixtures | `leave_sample.csv`, `leave_invalid.csv`, `attendance_sample.csv`, `attendance_invalid.csv`, `resume.pdf` |
+| File fixtures | `leave_sample.xlsx`, `leave_invalid.xlsx`, `attendance_sample.csv`, `attendance_invalid.csv`, `resume.pdf` |
 | Time control | Rails time helpers or a test clock for leave reset, notice periods, and session expiry |
 | Test data reset | `bin/rails db:reset` followed by the bootstrap and seed commands |
 
@@ -69,7 +69,7 @@ Run in this order. The "gate" column is the minimum that must pass before moving
 | S03 | Employee records | Create, validate, components with derived CTC, bank | Priya/EMP101 and Canadian/US employees exist |
 | S04 | Hierarchy | Manager assignment, cycles, scope | Subtree rules verified |
 | S05 | Self-service, directory | Field-level edits, filters, scoping | Directory scoped to viewer |
-| S06 | Leave CSV upload | Template, errors, balance updates, scope | Sample file imports cleanly |
+| S06 | Leave Excel upload | Template, errors, balance updates, scope | Sample file imports cleanly |
 | S07 | Attendance CSV upload | CSV validation, upsert, exceptions, scope | Attendance rows loaded |
 | S08 | Monthly payroll run | Inclusion, gross, unpaid deduction, adjustments, blocking | Draft run approved |
 | S09 | Payroll export | XLSX, immutability, history, paid status | File verified |
@@ -125,7 +125,7 @@ Run after every story from S03 onward.
 | Mail catcher | Receives test emails |
 | Health/seed page | Application responds |
 
-From S07 onward add: leave CSV upload, attendance CSV upload.
+From S07 onward add: leave Excel upload, attendance CSV upload.
 From S08 onward add: payroll draft creation.
 From S10 onward add: headcount report.
 From S12 onward add: candidate sign-in and own applications.
@@ -138,7 +138,7 @@ Execute only after S18. This is the demo script.
 2. HR moves the application to Screening, then Interview; records an interview; moves to Offer with CTC and start date.
 3. HR marks the application Hired and converts it; confirm the employee references the candidate.
 4. HR completes onboarding, sends the invitation, and activates the employee on the start date.
-5. HR uploads the overnight leave CSV including Nisha's earned leave request; balance decreases.
+5. HR uploads the overnight leave Excel file including Nisha's earned leave request; balance decreases.
 6. HR uploads the overnight attendance CSV including a day that conflicts with approved leave; conflict is resolved.
 7. HR creates and exports the monthly payroll; verify Nisha's row, bank details, gross, unpaid deduction, and total.
 8. HR offboards Nisha, enters final pay, and confirms login stops after the last working day.
@@ -149,7 +149,7 @@ Execute only after S18. This is the demo script.
 | Check | Target | Story |
 |---|---|---|
 | Employee Excel import (10,000 rows) | < 10 minutes | S06 / S11 |
-| Leave CSV import (10,000 rows) | < 10 minutes | S06 / S11 |
+| Leave Excel import (10,000 rows) | < 10 minutes | S06 / S11 |
 | Attendance CSV import (10,000 rows) | < 10 minutes | S07 / S11 |
 | Standard list load | < 1 s p95 | S05, S11 |
 | Page load | < 2 s p95 | S11 |
@@ -202,7 +202,7 @@ Permission or data-leak defects are always severity 1, regardless of visible imp
 
 ## 12. Assumptions and risks
 
-- The leave CSV and attendance CSV formats are confirmed at implementation; fixtures will be
+- The leave Excel and attendance CSV formats are confirmed at implementation; fixtures will be
   regenerated then. If the formats change, S06/S07 cases and S11 seed mappings must be updated.
 - Local email is captured by the mail catcher; tests must not depend on external delivery.
 - Date-sensitive cases (year reset, notice period, session expiry) use a controllable clock so they

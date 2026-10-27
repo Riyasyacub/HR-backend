@@ -475,6 +475,16 @@ Failures:
 - `401 Unauthorized` with code `invalid_token` without a valid access token.
 - `403 Forbidden` with code `forbidden` for a manager or standard employee.
 
+### GET `/api/v1/employees/:id/leave_balances`
+
+Same visibility as `GET /api/v1/employees/:id` (HR, the linked employee, or a manager of the
+employee's subtree; otherwise `403`). Returns balanced leave types for `year` (default: current
+year). `used` is net of reversals; `remaining = entitled - used`.
+
+```json
+{ "data": [{ "leave_type": "Earned", "entitled": 6, "used": 1, "remaining": 5 }] }
+```
+
 ### GET `/api/v1/employees/team`
 
 Manager only. Returns every employee in the manager's reporting subtree, at any depth, ordered by
@@ -507,3 +517,68 @@ Success: `200 OK`
 A manager can open a subtree employee with `GET /api/v1/employees/:id`; that response omits bank
 and compensation. Failure: `401 Unauthorized` with code `invalid_token` or `403 Forbidden` with code
 `forbidden`.
+
+## S06 Leave Excel import
+
+### POST `/api/v1/leave_imports`
+
+HR only. Multipart upload with a `file` field holding an `.xlsx` workbook (max 5 MB). The first
+sheet needs the headers `employee_id`, `leave_date`, `leave_type`, and optionally `reason`. The
+file is stored and processed by a background job.
+
+Success: `202 Accepted`
+
+```json
+{
+  "data": {
+    "id": 7, "status": "queued", "total_rows": 0, "imported_rows": 0,
+    "row_errors": [], "error_message": null, "created_at": "2026-10-27T22:00:00Z"
+  }
+}
+```
+
+A missing or non-`.xlsx` file returns `422` with code `validation_failed`. Non-HR users get `403`.
+
+### GET `/api/v1/leave_imports/template`
+
+HR only. Downloads `leave_template.xlsx` with the header row, one example row, and a `leave_type`
+dropdown (earned, sick, casual, unpaid). Non-HR users get `403`.
+
+### GET `/api/v1/leave_imports/:id`
+
+HR only. Poll until `status` is `completed` or `failed`. `row_errors` lists rejected rows by sheet
+line; valid rows are imported. A header problem sets `status: "failed"` and `error_message`.
+
+```json
+{
+  "data": {
+    "id": 7, "status": "completed", "total_rows": 2, "imported_rows": 1,
+    "row_errors": [{ "line": 3, "errors": ["unknown employee EMP999"] }],
+    "error_message": null, "created_at": "2026-10-27T22:00:00Z"
+  }
+}
+```
+
+### GET `/api/v1/leave_records`
+
+Any signed-in user, scoped by policy: HR sees all records, a manager sees their own and their
+subtree's, an employee sees their own, and a user without an employee record gets an empty list.
+Newest first. Optional `leave_date` (`YYYY-MM-DD`) and `employee_id` (employee record id) filters; offset-paginated with `page` and
+`per_page` (default 25, max 100).
+
+```json
+{
+  "data": [
+    {
+      "id": 12, "leave_date": "2026-10-28", "leave_type": "Earned", "reason": "Family function",
+      "payroll_deduction": false,
+      "employee": { "id": 3, "employee_id": "EMP102", "name": "Priya Sharma" }
+    }
+  ],
+  "meta": { "page": 1, "per_page": 25, "total": 1 }
+}
+```
+
+### GET `/api/v1/leave_records/:id`
+
+Same visibility as the list. A record outside the viewer's scope returns `403`.

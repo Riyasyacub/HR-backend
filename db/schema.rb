@@ -10,9 +10,37 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_000005) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_054851) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "filename", null: false
+    t.string "content_type"
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.datetime "created_at", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
 
   create_table "audit_entries", force: :cascade do |t|
     t.bigint "actor_id", null: false
@@ -89,6 +117,51 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_000005) do
     t.check_constraint "manager_id IS NULL OR manager_id <> id", name: "check_employees_manager_not_self"
   end
 
+  create_table "leave_imports", force: :cascade do |t|
+    t.bigint "uploaded_by_id", null: false
+    t.string "status", default: "queued", null: false
+    t.integer "total_rows", default: 0, null: false
+    t.integer "imported_rows", default: 0, null: false
+    t.jsonb "row_errors", default: [], null: false
+    t.string "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["uploaded_by_id"], name: "index_leave_imports_on_uploaded_by_id"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "leave_imports_status_known"
+  end
+
+  create_table "leave_ledger_entries", force: :cascade do |t|
+    t.bigint "employee_id", null: false
+    t.bigint "leave_type_id", null: false
+    t.bigint "leave_record_id"
+    t.integer "year", null: false
+    t.string "entry_type", null: false
+    t.integer "days", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id", "leave_type_id", "year"], name: "idx_on_employee_id_leave_type_id_year_f62b9c3cc5"
+    t.index ["employee_id", "leave_type_id", "year"], name: "index_leave_ledger_entries_one_entitlement", unique: true, where: "((entry_type)::text = 'entitlement'::text)"
+    t.index ["employee_id"], name: "index_leave_ledger_entries_on_employee_id"
+    t.index ["leave_record_id"], name: "index_leave_ledger_entries_on_leave_record_id"
+    t.index ["leave_type_id"], name: "index_leave_ledger_entries_on_leave_type_id"
+    t.check_constraint "days <> 0", name: "leave_ledger_entries_days_nonzero"
+    t.check_constraint "entry_type::text = ANY (ARRAY['entitlement'::character varying, 'used'::character varying, 'reversal'::character varying]::text[])", name: "leave_ledger_entries_entry_type_known"
+  end
+
+  create_table "leave_records", force: :cascade do |t|
+    t.bigint "employee_id", null: false
+    t.bigint "leave_type_id", null: false
+    t.bigint "leave_import_id"
+    t.date "leave_date", null: false
+    t.string "reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id", "leave_date"], name: "index_leave_records_on_employee_id_and_leave_date", unique: true
+    t.index ["employee_id"], name: "index_leave_records_on_employee_id"
+    t.index ["leave_import_id"], name: "index_leave_records_on_leave_import_id"
+    t.index ["leave_type_id"], name: "index_leave_records_on_leave_type_id"
+  end
+
   create_table "leave_types", force: :cascade do |t|
     t.string "name", null: false
     t.integer "default_entitlement"
@@ -132,12 +205,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_000005) do
     t.index ["role_id"], name: "index_users_on_role_id"
   end
 
+  add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "audit_entries", "users", column: "actor_id"
   add_foreign_key "compensation_components", "compensations"
   add_foreign_key "compensations", "employees"
   add_foreign_key "employees", "departments"
   add_foreign_key "employees", "employees", column: "manager_id"
   add_foreign_key "employees", "users"
+  add_foreign_key "leave_imports", "users", column: "uploaded_by_id"
+  add_foreign_key "leave_ledger_entries", "employees"
+  add_foreign_key "leave_ledger_entries", "leave_records"
+  add_foreign_key "leave_ledger_entries", "leave_types"
+  add_foreign_key "leave_records", "employees"
+  add_foreign_key "leave_records", "leave_imports"
+  add_foreign_key "leave_records", "leave_types"
   add_foreign_key "user_sessions", "users"
   add_foreign_key "users", "roles"
 end

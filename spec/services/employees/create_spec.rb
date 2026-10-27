@@ -69,4 +69,13 @@ RSpec.describe Employees::Create do
 
     expect(Employee.find_by(employee_id: "EMP101")).to be_nil
   end
+
+  it "grants the current year's leave entitlements to the new employee" do
+    earned = create(:leave_type, name: "Earned", default_entitlement: 6)
+
+    travel_to(Date.new(2026, 3, 1)) { create_employee }
+
+    employee = Employee.find_by!(employee_id: "EMP101")
+    expect(LeaveLedgerEntry.balance(employee:, leave_type: earned, year: 2026)).to eq(6)
+  end
 end

@@ -24,7 +24,7 @@
 | S03 | Create and manage employee records | People | S02 |
 | S04 | Reporting hierarchy and manager scope | People | S03 |
 | S05 | Employee self-service and directory | People | S04 |
-| S06 | Leave CSV upload (overnight) | Leave | S04, S05 |
+| S06 | Leave Excel upload (overnight) | Leave | S04, S05 |
 | S07 | Attendance CSV upload (overnight) | Attendance | S06 |
 | S08 | Monthly payroll run | Payroll | S06, S07 |
 | S09 | Payroll Excel export and history | Payroll | S08 |
@@ -53,7 +53,7 @@
 | `emily@demo.test` | Employee (Canada, reports to Carol) | Used for offboarding tests |
 | `nisha@example.test` / `Candidate@123` | Candidate | Registered in S12 |
 
-Fixtures: `leave_sample.csv`, `leave_invalid.csv`, `attendance_sample.csv`, `attendance_invalid.csv`, `resume.pdf`, `offer_letter.pdf`. The final leave and attendance CSV formats are confirmed when S06 and S07 are implemented (per requirements §13).
+Fixtures: `leave_sample.xlsx`, `leave_invalid.xlsx`, `attendance_sample.csv`, `attendance_invalid.csv`, `resume.pdf`, `offer_letter.pdf`. The final leave Excel and attendance CSV formats are confirmed when S06 and S07 are implemented (per requirements §13).
 
 All demo accounts use `Demo@1234` unless noted. The bootstrap creates the authentication user and a minimal employee record (name, country, department, status, sample CTC/components, and bank details) so authentication and later stories have stable data. Stories S03–S06 add new records on top of it.
 
@@ -263,7 +263,7 @@ As an employee, I want to maintain my contact details and find colleagues in the
 
 ---
 
-## S06 — Leave CSV upload (overnight)
+## S06 — Leave Excel upload (overnight)
 
 | | |
 |---|---|
@@ -273,13 +273,19 @@ As an employee, I want to maintain my contact details and find colleagues in the
 | Covers | LVE-01 to LVE-14, BR-LVE-01 to BR-LVE-07 |
 
 **Story**
-As an HR user, I want to upload a leave CSV overnight so that balances, requests, and approvals are processed without an interactive leave UI.
+As an HR user, I want to upload a leave Excel file overnight so that balances, requests, and approvals are processed without an interactive leave UI.
 
 **Feature**
-- CSV format: employee ID, leave type, start date, end date, reason, status.
-- Upload with header validation, row validation, and import summary.
-- Unknown employee IDs, invalid dates, overlapping requests, and insufficient balances reported per row.
-- Approved leave reduces balances; rejected leave does not.
+- Overnight Excel (.xlsx, first sheet, max 5 MB) of approved leave, one row per employee on leave
+  for one day, with header row `employee_id | leave_date | leave_type | reason` (`leave_date` as
+  an Excel date or `YYYY-MM-DD` text; `leave_type` is earned, sick, casual, or unpaid; `reason`
+  optional).
+- Upload is stored and processed by a background job; HR polls the import for its summary.
+- Header validation, row validation, and import summary.
+- Unknown employee IDs, invalid or weekend dates, dates before the start date, and insufficient
+  balances reported per row.
+- Every row is approved leave and reduces the balance; entitlements are granted when an employee
+  is created (existing employees backfilled once).
 - Unpaid leave has no balance and is flagged for payroll deduction.
 - Working-day calculation (Monday–Friday, no holidays).
 - Only HR can import.
@@ -287,10 +293,10 @@ As an HR user, I want to upload a leave CSV overnight so that balances, requests
 
 **Acceptance criteria**
 
-- **AC-01** A valid leave CSV imports all rows and reports the count.
+- **AC-01** A valid leave Excel file imports all rows and reports the count.
 - **AC-02** Missing or malformed columns reject the file with a clear message.
-- **AC-03** Unknown employee IDs, invalid timestamps, overlaps, and insufficient balances are reported per row; valid rows import.
-- **AC-04** Approved earned/sick/casual leave reduces the remaining balance; rejected leave leaves it unchanged.
+- **AC-03** Unknown employee IDs, invalid or weekend dates, dates before the start date, and insufficient balances are reported per row; valid rows import.
+- **AC-04** Imported earned/sick/casual leave reduces the remaining balance by one day per row.
 - **AC-05** Unpaid leave has no balance, cannot be over-drawn, and is flagged for payroll deduction.
 - **AC-06** Re-uploading the same employee/date updates the record instead of creating a duplicate.
 - **AC-07** Leave records respect the viewer's scope: employees see their own, managers see their subtree, HR sees all.
@@ -300,14 +306,14 @@ As an HR user, I want to upload a leave CSV overnight so that balances, requests
 
 | ID | Type | Given | When | Then |
 |---|---|---|---|---|
-| TC-S06-01 | H | `leave_sample.csv` with 5 valid rows | Upload | 5 records imported; summary shows 5 succeeded |
-| TC-S06-02 | N | CSV header missing "status" | Upload | File rejected with a header error; no rows imported |
+| TC-S06-01 | H | `leave_sample.xlsx` with 5 valid rows | Upload | 5 records imported; summary shows 5 succeeded |
+| TC-S06-02 | N | Sheet header missing "leave_type" | Upload | File rejected with a header error; no rows imported |
 | TC-S06-03 | E | Row for employee `EMP999` who does not exist | Upload | Row rejected with "unknown employee"; other rows import |
-| TC-S06-04 | N | Row where end date is before start date | Upload | Row rejected with a date-order error |
-| TC-S06-05 | N | Priya has 1 earned day remaining; file requests 3 earned days | Upload | Row rejected for insufficient balance |
-| TC-S06-06 | H | Priya requests unpaid leave for 3 days | Upload | Accepted; no balance row; flagged for payroll deduction |
+| TC-S06-04 | N | Row with a Saturday `leave_date` | Upload | Row rejected as not a working day |
+| TC-S06-05 | N | Priya has 0 earned days remaining | Upload an earned row for her | Row rejected for insufficient balance |
+| TC-S06-06 | H | Unpaid row for Priya | Upload | Accepted; no balance change; flagged for payroll deduction |
 | TC-S06-07 | E | Same file uploaded again | Upload | Records update; total count does not grow |
-| TC-S06-08 | P | Priya signed in | Upload a CSV | Access denied; data unchanged |
+| TC-S06-08 | P | Priya signed in | Upload an Excel file | Access denied; data unchanged |
 | TC-S06-09 | P | Arjun signed in | Open John's leave record (outside his subtree) | Access denied |
 
 ---
@@ -875,7 +881,7 @@ After S18 passes, run one continuous scenario:
 2. HR moves the application through Screening and Interview, records an interview, and creates an offer.
 3. HR hires Nisha and converts her to an employee; the employee record references Nisha's candidate record.
 4. HR completes onboarding, sends the invite, and activates the employee.
-5. HR uploads the overnight leave CSV including Nisha's earned leave request; balance decreases.
+5. HR uploads the overnight leave Excel file including Nisha's earned leave request; balance decreases.
 6. HR uploads the overnight attendance CSV including a day that conflicts with Nisha's leave; conflict is resolved.
 7. HR creates the monthly payroll run and exports the Excel payout file; Nisha's row is present with bank details.
 8. HR offboards Nisha with a last working day and a final-pay adjustment; her login stops working.

@@ -22,6 +22,7 @@ module Employees
         employee.compensations.create!(
           compensation_attributes.except(:components).merge(components_attributes: components)
         )
+        Leaves::GrantEntitlements.call(employee:, year: Date.current.year)
         employee
       end
     end
