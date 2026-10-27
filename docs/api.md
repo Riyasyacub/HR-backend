@@ -582,3 +582,75 @@ Newest first. Optional `leave_date` (`YYYY-MM-DD`) and `employee_id` (employee r
 ### GET `/api/v1/leave_records/:id`
 
 Same visibility as the list. A record outside the viewer's scope returns `403`.
+
+## S08 Payroll runs
+
+All payroll endpoints are HR only; other users get `403`. No tax, statutory deduction, or payslip
+value is calculated. Amounts are strings with two decimals; totals are grouped by currency and
+never converted.
+
+### POST `/api/v1/payroll_runs`
+
+Request: `{ "month": "2026-11" }`. Creates a `draft` run and queues the calculation job.
+A second run for the same month or an invalid month returns `422` (`validation_failed`).
+
+Success: `202 Accepted`
+
+```json
+{
+  "data": {
+    "id": 4, "month": "2026-11-01", "status": "draft", "calculation_status": "queued",
+    "calculation_error": null, "created_at": "2026-10-27T08:00:00Z"
+  }
+}
+```
+
+`calculation_status` moves `queued` → `processing` → `completed` (or `failed` with
+`calculation_error`). Poll the run until it is `completed`.
+
+### GET `/api/v1/payroll_runs`
+
+Runs, newest month first, offset-paginated (`page`, `per_page`).
+
+### GET `/api/v1/payroll_runs/:id`
+
+The run plus totals per country and currency (never converted across currencies) and the number of lines with blocking issues.
+
+```json
+{
+  "data": {
+    "id": 4, "month": "2026-11-01", "status": "draft", "calculation_status": "completed",
+    "calculation_error": null, "created_at": "2026-10-27T08:00:00Z",
+    "blocking_issues_count": 1,
+    "totals": [
+      { "country": "India", "currency": "INR", "employees": 2, "monthly_gross": "150000.00",
+        "unpaid_deduction": "10000.00", "total": "140000.00" }
+    ]
+  }
+}
+```
+
+### POST `/api/v1/payroll_runs/:id/recalculate`
+
+Re-queues the calculation for a `draft` run whose calculation is `completed` or `failed` (for
+example after a new leave upload). Returns `202` with the run (`calculation_status: "queued"`).
+A run that is already queued/processing, or not a draft, returns `422` (`not_recalculable`).
+
+### GET `/api/v1/payroll_runs/:id/lines`
+
+Lines in employee ID order, offset-paginated. `issues_only=true` returns only lines with
+blocking issues.
+
+```json
+{
+  "data": [
+    {
+      "id": 31, "employee": { "id": 3, "employee_id": "EMP102", "name": "Priya Sharma" },
+      "country": "India", "currency": "INR", "monthly_gross": "100000.00", "working_days": 20,
+      "unpaid_days": 2, "unpaid_deduction": "10000.00", "total": "90000.00",
+      "blocking_issues": []
+    }
+  ],
+  "meta": { "page": 1, "per_page": 25, "total": 1 }
+}
+```

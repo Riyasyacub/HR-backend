@@ -19,6 +19,12 @@ Rails.application.routes.draw do
         member { get :leave_balances }
       end
       resources :leave_records, only: %i[index show]
+      resources :payroll_runs, only: %i[index create show] do
+        member do
+          post :recalculate
+          get :lines
+        end
+      end
       resources :leave_imports, only: %i[create show] do
         collection { get :template }
       end

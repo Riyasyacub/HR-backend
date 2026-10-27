@@ -25,8 +25,8 @@
 | S04 | Reporting hierarchy and manager scope | People | S03 |
 | S05 | Employee self-service and directory | People | S04 |
 | S06 | Leave Excel upload (overnight) | Leave | S04, S05 |
-| S07 | Attendance CSV upload (overnight) | Attendance | S06 |
-| S08 | Monthly payroll run | Payroll | S06, S07 |
+| S07 | ~~Attendance CSV upload~~ (cut) | — | — |
+| S08 | Monthly payroll run | Payroll | S06 |
 | S09 | Payroll Excel export and history | Payroll | S08 |
 | S10 | Reporting dashboards and exports | Reporting | S08, S09 |
 | S11 | Demo seed data and scale verification | Demo readiness | S10 |
@@ -46,14 +46,14 @@
 | `hr@demo.test` / `Demo@1234` | HR | Bootstrap account, created in S01 |
 | `meera@demo.test` | Manager (top level, India) | No manager; leave routes to HR |
 | `arjun@demo.test` | Manager (India, reports to Meera) | Has Priya as a direct report |
-| `priya@demo.test` | Employee (India, reports to Arjun) | Used for leave and attendance tests |
+| `priya@demo.test` | Employee (India, reports to Arjun) | Used for leave tests |
 | `robert@demo.test` | Manager (USA) | One direct report: John |
 | `john@demo.test` | Employee (USA, reports to Robert) | Used for payroll tests |
 | `carol@demo.test` | Manager (Canada) | One direct report: Emily |
 | `emily@demo.test` | Employee (Canada, reports to Carol) | Used for offboarding tests |
 | `nisha@example.test` / `Candidate@123` | Candidate | Registered in S12 |
 
-Fixtures: `leave_sample.xlsx`, `leave_invalid.xlsx`, `attendance_sample.csv`, `attendance_invalid.csv`, `resume.pdf`, `offer_letter.pdf`. The final leave Excel and attendance CSV formats are confirmed when S06 and S07 are implemented (per requirements §13).
+Fixtures: `leave_sample.xlsx`, `leave_invalid.xlsx`, `resume.pdf`, `offer_letter.pdf`. The leave Excel format was confirmed in S06.
 
 All demo accounts use `Demo@1234` unless noted. The bootstrap creates the authentication user and a minimal employee record (name, country, department, status, sample CTC/components, and bank details) so authentication and later stories have stable data. Stories S03–S06 add new records on top of it.
 
@@ -318,49 +318,11 @@ As an HR user, I want to upload a leave Excel file overnight so that balances, r
 
 ---
 
-## S07 — Attendance CSV upload (overnight)
+## S07 — Attendance CSV upload (cut)
 
-| | |
-|---|---|
-| Epic | Attendance |
-| Priority | P0 |
-| Depends on | S06 |
-| Covers | ATT-01 to ATT-09, BR-ATT-01 to BR-ATT-04 |
-
-**Story**
-As an HR user, I want to upload attendance CSV files overnight so that attendance data arrives from devices and conflicts with approved leave are surfaced before payroll.
-
-**Feature**
-- CSV format: employee ID, first-in timestamp, last-out timestamp.
-- Upload with header validation, row validation, and import summary.
-- Re-upload updates the same employee/date rather than duplicating.
-- Exception detection: missing first-in or last-out, no attendance on a working day without approved leave, attendance on approved leave.
-- HR correction with a reason; exception review/waive.
-- Records visible to the employee and their manager subtree; HR sees all.
-- Only HR can import.
-
-**Acceptance criteria**
-
-- **AC-01** A valid attendance CSV imports all rows and reports the count.
-- **AC-02** Missing or malformed columns reject the file with a clear message.
-- **AC-03** Unknown employee IDs and invalid timestamps are reported per row; valid rows import.
-- **AC-04** Row where last out is earlier than first in is rejected with a time-order error.
-- **AC-05** Re-uploading the same employee and date updates the record instead of creating a duplicate.
-- **AC-06** Employees see their own attendance; managers see their subtree; HR sees all.
-- **AC-07** Import is restricted to HR.
-- **AC-08** Exceptions are detected and listed per date with type and employee.
-
-**Test cases**
-
-| ID | Type | Given | When | Then |
-|---|---|---|---|---|
-| TC-S07-01 | H | `attendance_sample.csv` with 3 valid rows for Priya, Arjun, John | Upload | 3 records imported; summary shows 3 succeeded |
-| TC-S07-02 | N | CSV header missing "Last Out" | Upload | File rejected with a header error; no rows imported |
-| TC-S07-03 | E | Row for employee `EMP999` who does not exist | Upload | Row rejected with "unknown employee"; other rows import |
-| TC-S07-04 | N | Row where Last Out is earlier than First In | Upload | Row rejected with a time-order error |
-| TC-S07-05 | E | Same file uploaded again | Upload | Records update; total count does not grow |
-| TC-S07-06 | P | Priya signed in | Upload a CSV | Access denied; data unchanged |
-| TC-S07-07 | P | Arjun signed in | Open John's attendance (outside his subtree) | Access denied |
+Cut from scope on 2026-10-27. Leave records from S06 are the only source for absence; attendance
+import, exception detection, and reconciliation are not built. The ID is kept so later story
+numbers stay stable.
 
 ---
 
@@ -370,28 +332,29 @@ As an HR user, I want to upload attendance CSV files overnight so that attendanc
 |---|---|
 | Epic | Payroll |
 | Priority | P0 |
-| Depends on | S06, S07 |
+| Depends on | S06 |
 | Covers | PAY-01 to PAY-05, PAY-09, PAY-11, BR-PAY-01 to BR-PAY-08 |
 
 **Story**
-As an HR user, I want to prepare a monthly payroll run from CTC, unpaid leave (from CSV uploads), and manual adjustments, so that the payout amounts are complete and validated before export.
+As an HR user, I want to prepare a monthly payroll run from CTC and unpaid leave (from the leave Excel uploads), so that the payout amounts are complete and validated before export.
 
 **Feature**
-- Select a month and create a draft run for all `active`/`notice` employees.
+- Select a month and create a draft run for `active` employees who started on or before the month end (`notice` added in S18). One run per month.
+- The draft stores its lines; HR can recalculate a draft after new leave uploads.
 - Monthly gross = sum of annual components ÷ 12.
-- Automatic unpaid-leave deduction using working days in the month (from CSV-uploaded leave data).
-- Manual adjustments with descriptions.
+- Automatic unpaid-leave deduction using working days in the month (from uploaded leave records).
+- Manual adjustments are deferred (not in S08); total = gross − unpaid deduction.
 - Blocking validation for missing bank name, account number, or components; annual CTC is derived from the component sum.
 - Review totals by employee, country, currency; no tax or other deductions.
 - Only HR can create, edit, or export a payroll run.
 
 **Acceptance criteria**
 
-- **AC-01** The run includes `active` and `notice` employees and excludes `exited` employees.
+- **AC-01** The run includes `active` employees who started on or before the month end; `notice`/`exited` handling arrives with S18.
 - **AC-02** Monthly gross equals the sum of components divided by 12, rounded to two decimals.
 - **AC-03** Unpaid leave days in the month produce the deduction `(monthly gross ÷ working days) × unpaid days`.
-- **AC-04** Adjustments are added or subtracted with a description and appear in the total.
-- **AC-05** Export-blocking data issues are listed and prevent approval.
+- **AC-04** Deferred: manual adjustments are not part of S08.
+- **AC-05** Export-blocking data issues are listed on the draft run and will block generation/export in S09.
 - **AC-06** The run cannot be created or edited by non-HR users.
 - **AC-07** No tax, statutory deduction, benefit, or payslip value is calculated.
 
@@ -402,11 +365,11 @@ As an HR user, I want to prepare a monthly payroll run from CTC, unpaid leave (f
 | TC-S08-01 | H | Active employees with CTC and components exist | Create a run for November 2026 | Draft run lists all active employees with monthly gross |
 | TC-S08-02 | H | Priya's CTC is 1,200,000 (Basic 1,200,000) | Open her payroll line | Monthly gross is 100,000.00 |
 | TC-S08-03 | H | Priya has 2 unpaid leave days in a month with 20 working days | Add to the run | Deduction is 10,000.00 (100,000 ÷ 20 × 2) |
-| TC-S08-04 | H | HR adds a bonus adjustment of 5,000 | Save | Total = gross − unpaid deduction + 5,000; description shown |
-| TC-S08-05 | N | Employee has no bank account number | Attempt to approve/export | Blocked; the employee is listed as missing bank details |
-| TC-S08-06 | E | Components total 1,000,000 but CTC is 1,200,000 | Create run | Warning shown; HR must resolve before export |
+| TC-S08-04 | — | Deferred with manual adjustments | — | — |
+| TC-S08-05 | N | Employee has no bank account number | Create the run | The employee is listed as a blocking issue (missing bank details) |
+| TC-S08-06 | E | Employee has no compensation components | Create the run | The employee is listed as a blocking issue (missing components); CTC mismatch cannot occur because CTC is derived (BR-PAY-08) |
 | TC-S08-07 | H | Draft run exists | Filter/summarise by country and currency | Totals reconcile with employee lines; no conversion across currencies |
-| TC-S08-08 | P | Arjun (manager) signed in | Create or edit a payroll run | Access denied |
+| TC-S08-08 | P | Arjun (manager) signed in | Create, view, or recalculate a payroll run | Access denied |
 
 ---
 
@@ -463,11 +426,11 @@ As an HR user, I want to export the approved monthly payroll to Excel and re-dow
 | Covers | RPT-01 to RPT-12, BR-RPT-01 to BR-RPT-03 |
 
 **Story**
-As an HR user or manager, I want standard reports and dashboards, so that I can answer headcount, attrition, leave, attendance, payroll, and hiring questions without Excel.
+As an HR user or manager, I want standard reports and dashboards, so that I can answer headcount, attrition, leave, payroll, and hiring questions without Excel.
 
 **Feature**
-- HR dashboard: headcount, joiners/leavers, pending approvals, payroll status, attendance exceptions.
-- Reports: headcount by country/department/manager/status, joiners and leavers, attrition, leave balances and usage, attendance exceptions, payroll totals by month/country/currency, recruitment pipeline.
+- HR dashboard: headcount, joiners/leavers, pending approvals, payroll status.
+- Reports: headcount by country/department/manager/status, joiners and leavers, attrition, leave balances and usage, payroll totals by month/country/currency, recruitment pipeline.
 - Manager dashboard scoped to subtree.
 - Filters and CSV/XLSX export; permission-safe.
 - No salary or bank data for managers or candidates.
@@ -477,7 +440,7 @@ As an HR user or manager, I want standard reports and dashboards, so that I can 
 - **AC-01** Headcount reconciles with the employee list for the same filters.
 - **AC-02** Joiners/leavers show the correct dates and count.
 - **AC-03** Attrition equals leavers ÷ average of opening and closing headcount, with the formula visible.
-- **AC-04** Leave and attendance reports reconcile with their source records.
+- **AC-04** Leave reports reconcile with their source records.
 - **AC-05** Payroll totals reconcile with generated runs and are grouped by currency without conversion.
 - **AC-06** Managers see only their subtree; candidates cannot access reports.
 - **AC-07** Exports match the on-screen filtered results and are audit-logged.
@@ -490,7 +453,7 @@ As an HR user or manager, I want standard reports and dashboards, so that I can 
 | TC-S10-01 | H | Employees across three countries | Filter headcount by country | Counts match the filtered employee list |
 | TC-S10-02 | H | One joiner and one leaver in November | Open joiners/leavers | Lists show both with correct dates |
 | TC-S10-03 | H | Opening headcount 20, closing 18, 4 leavers | Open attrition | Value is 4 ÷ 19 = 21.05%, formula visible |
-| TC-S10-04 | H | Leave and attendance data exist | Open leave and attendance reports | Totals match balances, requests, and exceptions |
+| TC-S10-04 | H | Leave data exists | Open leave reports | Totals match balances and leave records |
 | TC-S10-05 | H | Payroll runs exist | Open payroll totals | Totals match runs, grouped by currency |
 | TC-S10-06 | H | Recruitment data exists | Open pipeline report | Counts match openings and applications |
 | TC-S10-07 | P | Arjun (manager) signed in | Open HR dashboard and a report for John (USA) | HR dashboard denied; only his subtree report is visible |
@@ -510,22 +473,22 @@ As an HR user or manager, I want standard reports and dashboards, so that I can 
 | Covers | NFR-16, NFR-17, NFR-02, G1, G6 |
 
 **Story**
-As a demo owner, I want a repeatable seed with 10,000 employees, 100 candidates, and two months of attendance, so that the product can be demonstrated and performance-tested at realistic scale.
+As a demo owner, I want a repeatable seed with 10,000 employees, 100 candidates, and two months of leave, so that the product can be demonstrated and performance-tested at realistic scale.
 
 **Feature**
 - Faker-based seed script with a default size of 10,000 employees and 100 candidates.
 - Multi-level hierarchy across India, USA, and Canada; country-appropriate currencies.
 - 100 candidates with applications in different stages (Applied, Screening, Interview, Offer, Hired, Rejected).
-- Two months of attendance for active employees.
+- Two months of leave records for a sample of active employees.
 - Idempotent re-run (no duplicates), clear prefixes for seeded records, and a runtime target.
 - Sample login accounts for demo roles.
 
 **Acceptance criteria**
 
-- **AC-01** A single command seeds 10,000 employees, 100 candidates, and attendance for the last two months.
+- **AC-01** A single command seeds 10,000 employees, 100 candidates, and leave records for the last two months.
 - **AC-02** Employees span India, USA, and Canada with the correct currencies and a hierarchy at least three levels deep.
 - **AC-03** Candidates have applications distributed across all pipeline stages.
-- **AC-04** Attendance covers working days for the last two months for active employees.
+- **AC-04** Leave records cover the last two months and respect balances.
 - **AC-05** Re-running the seed does not duplicate records.
 - **AC-06** The full seed completes within 15 minutes.
 - **AC-07** Sample HR, manager, employee, and candidate accounts can sign in.
@@ -539,8 +502,8 @@ As a demo owner, I want a repeatable seed with 10,000 employees, 100 candidates,
 | TC-S11-02 | H | Seed completed | Count employees by country | All three countries present; INR, USD, CAD assigned correctly |
 | TC-S11-03 | H | Seed completed | Inspect hierarchy | At least three levels exist; no cycles; every manager is an employee |
 | TC-S11-04 | H | Seed completed | Open recruitment pipeline | Applications exist in every stage |
-| TC-S11-05 | H | Seed completed | Check attendance coverage | Active employees have attendance for working days in the last two months |
-| TC-S11-06 | E | Seed already run | Run the seed again | No duplicate employee IDs, candidates, or attendance rows; counts unchanged |
+| TC-S11-05 | H | Seed completed | Check leave coverage | Leave records exist for the last two months; no balance is negative |
+| TC-S11-06 | E | Seed already run | Run the seed again | No duplicate employee IDs, candidates, or leave records; counts unchanged |
 | TC-S11-07 | PF | Clean database | Time the seed run | Completes in under 15 minutes |
 | TC-S11-08 | H | Seed completed | Sign in with each sample account | HR, manager, employee, and candidate land on their correct dashboards |
 | TC-S11-09 | H | Seed completed | Open headcount report | Reported total matches 10,000 (plus non-seed demo records) |
@@ -882,7 +845,6 @@ After S18 passes, run one continuous scenario:
 3. HR hires Nisha and converts her to an employee; the employee record references Nisha's candidate record.
 4. HR completes onboarding, sends the invite, and activates the employee.
 5. HR uploads the overnight leave Excel file including Nisha's earned leave request; balance decreases.
-6. HR uploads the overnight attendance CSV including a day that conflicts with Nisha's leave; conflict is resolved.
-7. HR creates the monthly payroll run and exports the Excel payout file; Nisha's row is present with bank details.
-8. HR offboards Nisha with a last working day and a final-pay adjustment; her login stops working.
-9. HR opens the dashboard and confirms headcount, attrition, leave, attendance, and payroll figures.
+6. HR creates the monthly payroll run and exports the Excel payout file; Nisha's row is present with bank details.
+7. HR offboards Nisha with a last working day and a final-pay adjustment; her login stops working.
+8. HR opens the dashboard and confirms headcount, attrition, leave, and payroll figures.

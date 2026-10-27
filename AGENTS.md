@@ -9,9 +9,9 @@ conflicts with a direct request from the user, ask before proceeding.
 |---|---|
 | Application | Rails 8.1.4 API-only backend (`config.api_only = true`) with PostgreSQL 18.6 |
 | Frontend | Separate React repo at `../incubyte-FE` (Vite + TypeScript; shadcn/ui + Tailwind CSS; Vitest + React Testing Library) |
-| Current state | S02 complete: JWT authentication, roles, sessions, React sign-in, protected routing, role-aware dashboards, and HR settings (countries, departments, leave types); S03 next; RSpec and Mailhog configured |
+| Current state | S01–S06 and S08 complete (auth, HR settings, employee records, hierarchy, self-service and directory, leave Excel upload with balances, monthly payroll draft run); S07 cut; S09 next; smoke pack deferred to the end; RSpec, Mailhog, and Solid Queue (run `bin/jobs` in development) configured |
 | Product docs | `docs/requirements.md`, `docs/product-stories.md`, `docs/test-plan.md`, `docs/README.md` |
-| Story order | S01 → S22, strictly sequential |
+| Story order | S01 → S19, strictly sequential (S07 cut; S19 change history deferred from S05) |
 | Prompt log | `prompts/prompt-log.md` |
 
 Read the requirements and the next story before writing any code. The stories define the
@@ -135,8 +135,8 @@ Next: token refresh (AC-05), approx. 20 lines
 Awaiting: approval to continue
 ```
 
-- Commit once per accepted story in **both** repositories, after the chunk reviews, regression
-  smoke pack, and story sign-off. Never commit mid-story or while a chunk awaits review. Include
+- Commit once per accepted story in **both** repositories, after the chunk reviews and story
+  sign-off. The regression smoke pack runs once at the end, not per story. Never commit mid-story or while a chunk awaits review. Include
   the story ID in both commit messages.
 - Do not bundle a second story into a checkpoint.
 - A chunk includes its specs and implementation together, but only production lines count toward
@@ -178,7 +178,7 @@ Awaiting: approval to continue
   `SELECT ... FOR UPDATE`).
 - Treat approvals, leave balances, payroll runs, and imports as state machines: re-check the state
   inside the transaction.
-- Make imports and exports idempotent; use unique keys and upserts for attendance and
+- Make imports and exports idempotent; use unique keys and upserts for leave and
   employee/candidate imports.
 - Handle `ActiveRecord::RecordNotUnique` and deadlocks with a bounded retry, never a blind loop.
 - Use append-only ledger entries for leave balances; never recalculate history destructively.
@@ -266,7 +266,7 @@ Ask before doing any of the following:
 | Email | Mailhog on localhost (SMTP 1025, UI 8025) |
 | 50-line count | Production code only; specs and factories excluded; one-line test descriptions before writing specs |
 | Commits | One per accepted story in both repos, after story sign-off |
-| Input fixtures | Provided at S06 (employee Excel) and S16 (attendance CSV) |
+| Input fixtures | Leave Excel built in specs (S06); employee Excel expected for bulk employee import |
 
 **Still to confirm**
 
@@ -294,7 +294,7 @@ Ask before doing any of the following:
 - All story test cases pass, including negative and permission cases.
 - React screens for the story delivered and tested with Vitest + React Testing Library.
 - API documentation updated for new or changed endpoints.
-- Regression smoke pack from `docs/test-plan.md` passes.
+- Full automated suites pass (the regression smoke pack from `docs/test-plan.md` runs once at the end).
 - Documentation updated if behaviour or contracts changed.
 - Prompt log notes updated.
 - One commit in each repository after sign-off, both referencing the story ID.

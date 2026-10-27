@@ -5,6 +5,7 @@ class Employee < ApplicationRecord
   belongs_to :user, optional: true
   belongs_to :manager, class_name: "Employee", optional: true
   has_many :compensations, dependent: :restrict_with_exception, inverse_of: :employee
+  has_many :leave_records, dependent: :restrict_with_exception
   has_many :subordinates, class_name: "Employee", foreign_key: :manager_id,
                           dependent: :restrict_with_exception, inverse_of: :manager
 

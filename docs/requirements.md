@@ -34,11 +34,11 @@ payroll, benefits, or identity platform.
 | Compensation | **Component breakup supplied in the HR Excel**; **annual CTC** is the sum of the components |
 | Payroll | Monthly Excel payout list; unpaid leave **automatically reduces** pay; no tax or deductions |
 | Verification | None; data from Excel and forms is accepted as entered |
-| Attendance | Overnight CSV upload with employee ID, first-in timestamp, and last-out timestamp |
+| Attendance | Cut from scope (S07); not built |
 | Leave | Overnight CSV upload with employee ID, leave type, start date, end date, reason, status |
 | Email | **Local SMTP only** (localhost) for the demo |
 | Queries | **Removed** from the demo; no helpdesk or HR letter feature |
-| Integrations | Email, leave Excel, and time & attendance CSV only |
+| Integrations | Email and leave Excel only |
 | Story order | Hiring, onboarding, and offboarding moved to the last phases (S12–S18) |
 
 ---
@@ -326,7 +326,10 @@ No country policies.
 
 ---
 
-### 6.6 Attendance and reconciliation
+### 6.6 Attendance and reconciliation (cut)
+
+> **Cut from scope on 2026-10-27.** Story S07 will not be built; leave records from S06 are the
+> only absence source. The requirements below are kept for reference only.
 
 **Objective:** Import device attendance and surface conflicts with approved leave before payroll.
 

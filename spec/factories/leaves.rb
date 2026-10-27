@@ -22,3 +22,20 @@ FactoryBot.define do
     end
   end
 end
+
+FactoryBot.define do
+  factory :payroll_run do
+    month { Date.new(2026, 11, 1) }
+    association :created_by, factory: %i[user hr]
+  end
+
+  factory :payroll_line do
+    payroll_run
+    employee
+    country { "India" }
+    currency { "INR" }
+    monthly_gross { 100_000 }
+    working_days { 21 }
+    total { 100_000 }
+  end
+end

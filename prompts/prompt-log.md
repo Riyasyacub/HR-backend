@@ -1022,3 +1022,123 @@ Notes: Added leave balances to the employee profile. Backend: LeaveLedgerEntry.s
 > commit S06, don't run smoke pack
 
 Notes: Committed S06 in both repos without the regression smoke pack (user skipped it). CLAUDE.md left uncommitted.
+
+### Attendance vs leave question
+
+> attendance and leave will give same result right? attendance is just a proof of non leave right?
+
+Notes: Question only, no code changed. Explained how S07 attendance differs from leave per the story.
+
+### Cut S07
+
+> cut S07
+
+Notes: Cut S07 (attendance) from scope; docs only. product-stories.md: S07 replaced with a cut note (ID kept), story map updated, S08 no longer depends on S07, attendance removed from S10 reports, S11 seed (now leave records), fixtures and end-to-end steps (renumbered). test-plan.md: S07 row, smoke pack, performance, traceability, fixtures updated. requirements.md: section 6.6 marked cut, scope and integrations rows updated. README.md: S07 marked cut. Raised: csv gem now unused directly (roo still depends on it); AGENTS.md/CLAUDE.md still mention attendance fixtures. No code changed.
+
+### Remove csv gem, update agent docs, start S08
+
+> yes to both, then start S08
+
+Notes: Removed gem "csv" from Gemfile (still installed as a roo dependency). Updated AGENTS.md and CLAUDE.md: current state (S01-S06 done, S07 cut, S08 next, Solid Queue), story order S01-S19, fixtures line, leave instead of attendance upserts. Read S08 story and PAY requirements; asked 6 blocking questions (employee statuses, run lifecycle, recalculation, one run per month, adjustments audit, screens). No S08 code written.
+
+### S08 decisions
+
+> 1A, 2A, 3A, 4A, 5 - as of now no adjustments
+
+Notes: Decisions: 1A active employees started by month end; 2A draft only in S08; 3A stored lines + recalculate; 4A one run per month; 5 no adjustments for now (AC-04 and TC-S08-04 deferred). Applied the Q6 recommendation (TC-S08-06 replaced with missing components as a blocking issue) since it was not answered. Updated S08 story text. Chunk S08-1: migration for payroll_runs (unique month, status check) and payroll_lines (unique run+employee, amounts, blocking_issues jsonb); models PayrollRun, PayrollLine; factories; 5 model specs. Red confirmed. rspec 241/0, RuboCop clean. Production lines about 18 in models plus about 30 hand-written migration lines.
+
+### Continue S08-2
+
+> approved, continue with S08-2
+
+Notes: Chunk S08-2. Added Payroll::CalculateLine (app/services/payroll/calculate_line.rb): monthly gross = components sum / 12 rounded, Mon-Fri working days, unpaid days from leave records of type Unpaid in the month, deduction = gross / working days x unpaid days (2 decimals), total, country/currency, blocking issues (missing bank name, account number, components). Added Employee has_many :leave_records. Specs: spec/services/payroll/calculate_line_spec.rb (8). Red confirmed. rspec 249/0, RuboCop clean. Production lines about 46.
+
+### Continue S08-3 as a background job
+
+> approved, continue with S08-3, NOTE: This should be a background job, not a synchronous generation
+
+Notes: Chunk S08-3 as a background job. Migration adds payroll_runs.calculation_status (queued/processing/completed/failed, check constraint) and calculation_error; PayrollRun validates it. Payroll::GenerateLines (app/services/payroll/generate_lines.rb): under the run row lock, only for draft runs, replaces lines for active employees started by month end using CalculateLine, then marks completed. CalculatePayrollRunJob (app/jobs/calculate_payroll_run_job.rb): atomic claim queued -> processing, runs GenerateLines, marks failed and re-raises on ActiveRecord errors. Specs: generate_lines_spec (4), calculate_payroll_run_job_spec (3). Red confirmed. rspec 256/0, RuboCop clean. Production lines about 40 plus 6 migration lines. Flagged the new column as a schema choice for user review.
+
+### Continue S08-4
+
+> approved, continue to next chunk
+
+Notes: Chunk S08-4. PayrollRunPolicy (HR only); Api::V1::PayrollRunsController index (newest first, paginated), create (month YYYY-MM, 202, enqueues CalculatePayrollRunJob; 422 duplicate/invalid month), show (currency totals via one grouped query, blocking_issues_count); PayrollRun#currency_totals and #blocking_issues_count; route. Recalculate and lines endpoint moved to S08-5 to stay under 50 lines. Specs: spec/requests/api/v1/payroll_runs_spec.rb (6). Red confirmed. rspec 262/0, RuboCop clean, Brakeman 0. docs/api.md: S08 payroll section. Production lines about 58.
+
+### Continue S08-5
+
+> approved, continue to next chunk
+
+Notes: Chunk S08-5. payroll_runs_controller.rb: recalculate (atomic requeue only for draft runs whose calculation is completed/failed, enqueues job, 422 not_recalculable otherwise, 404 unknown) and lines (employee-ID order, preload employees, issues_only filter, pagination); policy recalculate?/lines?; member routes. Specs: 7 new in spec/requests/api/v1/payroll_runs_spec.rb (incl. N+1). Red confirmed (7 failing). rspec 269/0, RuboCop clean, Brakeman 0. docs/api.md updated. Production lines about 38.
+
+### Continue S08-6
+
+> approved, continue to next chunk
+
+Notes: Chunk S08-6 (frontend). New src/api/payroll.ts (listPayrollRuns, createPayrollRun) and src/pages/PayrollRunsPage.tsx (month picker + Create run, runs table linking to /payroll/:id, polls every 2s while any run is queued/processing, API error shown); /payroll HR route; HR dashboard link. Tests: src/api/payroll.test.ts (2), src/pages/PayrollRunsPage.test.tsx (4). Red confirmed. Vitest 90 passed (serial), typecheck and lint clean. Production lines about 70 (API module 20 + page 52 + route/link 4); over limit, reported.
+
+### Continue S08-7a
+
+> approved, continue to next chunk
+
+Notes: Chunk S08-7a (frontend). getPayrollRun, recalculatePayrollRun and PayrollRunDetail/CurrencyTotal types in src/api/payroll.ts; new src/pages/PayrollRunPage.tsx (month heading, status, currency totals table, blocking-issue count, Recalculate for drafts, polls while calculating, failure message); /payroll/:id HR route. Tests: api (1), PayrollRunPage (5). Red confirmed. Vitest 96 passed (serial), typecheck and lint clean. Production lines about 70.
+
+### Why frontend tests are slow
+
+> why the FE tests toomuch time? what are the work arounds?
+
+Notes: Question asked mid-chunk (S08-7a). Explained causes (repo on /mnt/d under WSL, serial run, jsdom per file, real 2s polling waits in tests) and workarounds. No code changed for this question.
+
+### Move repos to the Linux filesystem
+
+> do 1 now
+
+Notes: Copied both repos to ~/work (incubyte, incubyte-FE) with rsync, excluding node_modules, tmp, log, storage; reinstalled dependencies and ran the suites there. Original /mnt/d copies left untouched. User to restart the session from ~/work/incubyte.
+
+### Continue S08-7b
+
+> approved, continue to next chunk
+
+Notes: In progress. Working in ~/work copies (session still started from /mnt/d).
+
+### Session resumed from ~/work
+
+> this repo is moved from D:\Riyas Work\personal\incubyte. be ready we will continue from here
+
+Notes: Session now runs from ~/work/incubyte. Checked prompt log, sibling ../incubyte-FE present, PostgreSQL running. No code changed.
+
+### Continue S08-7b (resumed)
+
+> continue S08-7b
+
+Notes: Chunk S08-7b (frontend), resumed after moving to ~/work. listPayrollLines and PayrollLine types in src/api/payroll.ts; new src/components/PayrollLinesTable.tsx (lines table, Issues only filter, Previous/Next paging); shown on PayrollRunPage once calculation is completed. Tests (written earlier, red confirmed): PayrollLinesTable (3), PayrollRunPage wiring (2), api (1). Vitest 102 passed, typecheck and lint clean; RSpec 269 examples 0 failures; RuboCop clean. Production lines about 52.
+
+### Continue S08-8
+
+> approved, continue to next chunk
+
+Notes: In progress.
+
+### S08-8 totals by country and currency
+
+> A, continue to next chunk
+
+Notes: Answers the S08-8 question with option A (totals grouped by country and currency). Chunk S08-8: PayrollRun#currency_totals renamed country_currency_totals (group by country, currency); show endpoint totals include country; docs/api.md updated; frontend CurrencyTotal.country and Country column on PayrollRunPage. Tests updated first and red: request spec (two USD countries in separate rows), PayrollRunPage totals test. RSpec 269/0, RuboCop clean, Brakeman 0; Vitest 102 passed, typecheck and lint clean. Production lines about 8.
+
+### What the smoke pack includes
+
+> what does the smok test include?
+
+Notes: Question only; summarised the regression smoke pack from docs/test-plan.md. No code changed.
+
+### Defer the smoke pack
+
+> i think, we will do smoke at last, not now!
+
+Notes: User defers the regression smoke pack to the end instead of per story (overrides the per-story gate in CLAUDE.md/test-plan for now). Asked how to handle the S08 commit, which CLAUDE.md ties to the smoke pack. No code changed.
+
+### Sign off S08, smoke pack at the end
+
+> 1A, 2 yes
+
+Notes: Answers the commit and docs questions. S08 signed off without the smoke pack. CLAUDE.md and AGENTS.md: commit rule and per-story done list no longer require the smoke pack; current state says S08 complete, S09 next. docs/test-plan.md: smoke pack runs once at the end; leave upload check corrected to S06 onward. Committed S08 in both repos (backend commit also carries the uncommitted S07-cut docs and csv gem removal). CLAUDE.md left untracked as before.

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_054851) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_073817) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -127,7 +127,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_054851) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["uploaded_by_id"], name: "index_leave_imports_on_uploaded_by_id"
-    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "leave_imports_status_known"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying::text, 'processing'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text])", name: "leave_imports_status_known"
   end
 
   create_table "leave_ledger_entries", force: :cascade do |t|
@@ -145,7 +145,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_054851) do
     t.index ["leave_record_id"], name: "index_leave_ledger_entries_on_leave_record_id"
     t.index ["leave_type_id"], name: "index_leave_ledger_entries_on_leave_type_id"
     t.check_constraint "days <> 0", name: "leave_ledger_entries_days_nonzero"
-    t.check_constraint "entry_type::text = ANY (ARRAY['entitlement'::character varying, 'used'::character varying, 'reversal'::character varying]::text[])", name: "leave_ledger_entries_entry_type_known"
+    t.check_constraint "entry_type::text = ANY (ARRAY['entitlement'::character varying::text, 'used'::character varying::text, 'reversal'::character varying::text])", name: "leave_ledger_entries_entry_type_known"
   end
 
   create_table "leave_records", force: :cascade do |t|
@@ -169,6 +169,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_054851) do
     t.datetime "updated_at", null: false
     t.index "lower((name)::text)", name: "index_leave_types_on_lower_name", unique: true
     t.check_constraint "default_entitlement IS NULL OR default_entitlement >= 0", name: "leave_types_default_entitlement_non_negative"
+  end
+
+  create_table "payroll_lines", force: :cascade do |t|
+    t.bigint "payroll_run_id", null: false
+    t.bigint "employee_id", null: false
+    t.string "country", null: false
+    t.string "currency", null: false
+    t.decimal "monthly_gross", precision: 12, scale: 2, default: "0.0", null: false
+    t.integer "working_days", null: false
+    t.integer "unpaid_days", default: 0, null: false
+    t.decimal "unpaid_deduction", precision: 12, scale: 2, default: "0.0", null: false
+    t.decimal "total", precision: 12, scale: 2, default: "0.0", null: false
+    t.jsonb "blocking_issues", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id"], name: "index_payroll_lines_on_employee_id"
+    t.index ["payroll_run_id", "employee_id"], name: "index_payroll_lines_on_payroll_run_id_and_employee_id", unique: true
+    t.index ["payroll_run_id"], name: "index_payroll_lines_on_payroll_run_id"
+  end
+
+  create_table "payroll_runs", force: :cascade do |t|
+    t.date "month", null: false
+    t.string "status", default: "draft", null: false
+    t.bigint "created_by_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "calculation_status", default: "queued", null: false
+    t.string "calculation_error"
+    t.index ["created_by_id"], name: "index_payroll_runs_on_created_by_id"
+    t.index ["month"], name: "index_payroll_runs_on_month", unique: true
+    t.check_constraint "calculation_status::text = ANY (ARRAY['queued'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "payroll_runs_calculation_status_known"
+    t.check_constraint "status::text = ANY (ARRAY['draft'::character varying::text, 'generated'::character varying::text, 'paid'::character varying::text])", name: "payroll_runs_status_known"
   end
 
   create_table "roles", force: :cascade do |t|
@@ -220,6 +252,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_054851) do
   add_foreign_key "leave_records", "employees"
   add_foreign_key "leave_records", "leave_imports"
   add_foreign_key "leave_records", "leave_types"
+  add_foreign_key "payroll_lines", "employees"
+  add_foreign_key "payroll_lines", "payroll_runs"
+  add_foreign_key "payroll_runs", "users", column: "created_by_id"
   add_foreign_key "user_sessions", "users"
   add_foreign_key "users", "roles"
 end

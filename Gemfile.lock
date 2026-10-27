@@ -390,7 +390,6 @@ DEPENDENCIES
   brakeman
   bundler-audit
   caxlsx
-  csv
   debug
   factory_bot_rails
   faker
