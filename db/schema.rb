@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_092446) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_105738) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -85,6 +85,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_092446) do
     t.datetime "updated_at", null: false
     t.index "lower((code)::text)", name: "index_departments_on_lower_code", unique: true
     t.index "lower((name)::text)", name: "index_departments_on_lower_name", unique: true
+  end
+
+  create_table "employee_imports", force: :cascade do |t|
+    t.bigint "uploaded_by_id", null: false
+    t.string "mode", default: "create", null: false
+    t.string "status", default: "queued", null: false
+    t.integer "total_rows", default: 0, null: false
+    t.integer "imported_rows", default: 0, null: false
+    t.jsonb "row_errors", default: [], null: false
+    t.string "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["uploaded_by_id"], name: "index_employee_imports_on_uploaded_by_id"
+    t.check_constraint "mode::text = ANY (ARRAY['create'::character varying, 'update'::character varying]::text[])", name: "employee_imports_mode_known"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "employee_imports_status_known"
   end
 
   create_table "employees", force: :cascade do |t|
@@ -249,6 +264,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_092446) do
   add_foreign_key "audit_entries", "users", column: "actor_id"
   add_foreign_key "compensation_components", "compensations"
   add_foreign_key "compensations", "employees"
+  add_foreign_key "employee_imports", "users", column: "uploaded_by_id"
   add_foreign_key "employees", "departments"
   add_foreign_key "employees", "employees", column: "manager_id"
   add_foreign_key "employees", "users"

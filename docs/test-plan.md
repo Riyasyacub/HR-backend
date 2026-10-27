@@ -154,6 +154,15 @@ Execute only after S18. This is the demo script.
 | Payroll run for the seeded population | Completes without timeout; record duration | S11 |
 | Report export for 10,000 employees | Completes; record duration | S11 |
 
+**Recorded results** (development machine, WSL2, PostgreSQL 18.6)
+
+| Date | Check | Result |
+|---|---|---|
+| 2026-10-27 | Generate demo workbook (`demo:employee_workbook[10000]`, 10,007 rows, 1.1 MB) | 3.2 s |
+| 2026-10-27 | Employee Excel import, create mode, 10,007 rows (job run time) | 19.7 s; 10,007 imported, 0 row errors; 10,007 users, compensations and current-year entitlements; India/INR 6,005, USA/USD 2,502, Canada/CAD 1,502; reporting depth 6 |
+| 2026-10-27 | Demo leave seed (`demo:seed_leave`, last two months, 30% sample) | 3.4 s |
+| 2026-10-27 | Re-upload of the same workbook (create mode) | Every row rejected as already existing; nothing created (AC-05) |
+
 Performance tests run against the seeded dataset, not against the small functional fixtures.
 Record timings in the run log; a regression of more than 20% from the previous run needs review.
 

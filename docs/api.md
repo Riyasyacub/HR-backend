@@ -546,7 +546,9 @@ dropdown (earned, sick, casual, unpaid). Non-HR users get `403`.
 
 ### GET `/api/v1/leave_imports/:id`
 
-HR only. Poll until `status` is `completed` or `failed`. `row_errors` lists rejected rows by sheet
+HR only. Query: optional `errors_page` (default 1) and `errors_per_page` (default 50, max 200); `row_errors`
+holds that page only and `meta` gives `row_errors_total`, `errors_page`, `errors_per_page`.
+Poll until `status` is `completed` or `failed`. `row_errors` lists rejected rows by sheet
 line; valid rows are imported. A header problem sets `status: "failed"` and `error_message`.
 
 ```json
@@ -757,5 +759,60 @@ country, and currency, never converted (BR-RPT-03). Each row matches that run's 
       "monthly_gross": "150000.00", "unpaid_deduction": "10000.00", "total": "140000.00" }
   ],
   "meta": { "year": 2026 }
+}
+```
+
+## S11 employee Excel import
+
+HR only (others get `403`). One sheet, first row headers (case-insensitive, any order):
+
+- Required: `employee_id`, `first_name`, `last_name`, `work_email`, `country` (India, USA, Canada),
+  `department` (name or code), `job_title`, `start_date` (Excel date or `YYYY-MM-DD`), `bank_name`,
+  `account_number`, `Basic`, `HRA`, `Special Allowance` (annual amounts; blank cells skipped, at
+  least one positive amount per row; annual CTC is their sum).
+- Optional: `manager_employee_id` (an existing employee or a row in the same file), `ifsc`,
+  `personal_email`, `phone`.
+
+Every imported employee is `active` and gets a `standard_employee` login with the default password
+from the `employee_import.default_password` credential; an existing user with the same work email is
+linked instead. Leave entitlements for the current year are granted. The import runs in two passes:
+employees first, then managers. Rows whose employee ID or work email already exist are rejected, so
+re-uploading the same file creates nothing new. Only one employee import processes at a time.
+
+### GET `/api/v1/employee_imports/template`
+
+Downloads `employee_template.xlsx` with the headers above and one example row.
+
+### POST `/api/v1/employee_imports`
+
+Multipart `file` (`.xlsx`, up to 10 MB) and optional `mode` (`create`, default, or `update`).
+Returns `202` with the import (`status: "queued"`); an unknown mode returns `422`. A missing or non-Excel file returns `422` (`validation_failed`).
+
+**Update import** (`mode=update` on upload): the same workbook, matched by `employee_id`. Only
+`employee_id` is required. For each known employee it appends a compensation from `Basic`, `HRA`,
+`Special Allowance` on the row's optional `effective_date` column (blank = upload date; a row with no
+amounts adds no compensation) and sets or changes the manager from `manager_employee_id` (same
+unknown-manager and cycle checks). All other columns are ignored. Unknown employee IDs and an
+existing compensation on the same date are row errors. The default password is not needed.
+
+### GET `/api/v1/employee_imports/:id`
+
+Poll until `status` is `completed` or `failed`. `imported_rows` counts employees created; a row with
+a manager error is counted as imported (the employee exists without a manager) and is also listed in
+`row_errors` with a warning to correct `manager_employee_id` and upload the file with the update import.
+A header problem or a missing default password gives `status: "failed"` with
+`error_message`.
+
+```json
+{
+  "data": {
+    "id": 7, "mode": "create", "status": "completed", "total_rows": 4, "imported_rows": 3,
+    "row_errors": [
+      { "line": 4, "errors": ["unknown department Sales"] },
+      { "line": 5, "errors": ["unknown manager EMP999"] }
+    ],
+    "error_message": null, "created_at": "2026-10-27T11:00:00Z"
+  },
+  "meta": { "row_errors_total": 2, "errors_page": 1, "errors_per_page": 50 }
 }
 ```

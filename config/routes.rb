@@ -35,6 +35,9 @@ Rails.application.routes.draw do
       resources :leave_imports, only: %i[create show] do
         collection { get :template }
       end
+      resources :employee_imports, only: %i[create show] do
+        collection { get :template }
+      end
       namespace :settings do
         resources :countries, only: :index
         resources :leave_types, only: %i[index update]

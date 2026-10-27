@@ -6,6 +6,15 @@ module Leaves
       end
     end
 
+    def self.grant_all(employee_ids:, year:)
+      entries = LeaveType.where.not(default_entitlement: [ nil, 0 ]).flat_map do |leave_type|
+        employee_ids.map do |employee_id|
+          LeaveLedgerEntry.new(employee_id:, leave_type:, year:, entry_type: "entitlement", days: leave_type.default_entitlement)
+        end
+      end
+      LeaveLedgerEntry.import(entries, validate: false, on_duplicate_key_ignore: true)
+    end
+
     def self.backfill(year:)
       Employee.find_each { |employee| call(employee:, year:) }
     end

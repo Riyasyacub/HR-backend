@@ -56,6 +56,8 @@ GEM
       activemodel (= 8.1.4)
       activesupport (= 8.1.4)
       timeout (>= 0.4.0)
+    activerecord-import (3.0.1)
+      activerecord (>= 6.1)
     activestorage (8.1.4)
       actionpack (= 8.1.4)
       activejob (= 8.1.4)
@@ -385,6 +387,7 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  activerecord-import (~> 3.0)
   bcrypt (~> 3.1.7)
   bootsnap
   brakeman

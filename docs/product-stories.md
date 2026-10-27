@@ -479,6 +479,12 @@ As an HR user or manager, I want standard reports and dashboards, so that I can 
 | Depends on | S10 |
 | Covers | NFR-16, NFR-17, NFR-02, G1, G6 |
 
+**Scope in this build** (agreed 2026-10-27)
+- Employees load through the EMP-02 employee Excel import: one sheet with employee, bank, `Basic`/`HRA`/`Special Allowance` and `manager_employee_id` columns; pass 1 creates employees, users (default password from credentials), compensation and entitlements; pass 2 maps managers. Existing rows are rejected; manager errors carry a warning to use the update import.
+- Update import (same workbook) appends compensation on an optional per-row `effective_date` and sets or changes managers; other columns are ignored.
+- `demo:employee_workbook[10000]` generates the demo workbook (demo accounts EMP101–EMP107, `SEED` prefixes); `demo:seed_leave` seeds two months of leave.
+- Moved: candidates and applications (AC-03, TC-S11-04, candidate account in AC-07) to the end of S15. No preview step.
+
 **Story**
 As a demo owner, I want a repeatable seed with 10,000 employees, 100 candidates, and two months of leave, so that the product can be demonstrated and performance-tested at realistic scale.
 

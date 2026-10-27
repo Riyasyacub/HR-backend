@@ -1280,3 +1280,182 @@ Notes: Chunk S10-12 (frontend). Refactor: currentMonthPeriod moved to src/lib/pe
 > approved, continue to the next chunk
 
 Notes: S10-12 approved; S10 signed off (smoke pack deferred to the end). CLAUDE.md and AGENTS.md current state: S10 complete, S11 next. Committed S10 in both repos (CLAUDE.md stays untracked).
+
+### Start S11
+
+> approved, continue to the next chunk
+
+Notes: In progress. Read as: start S11 (cleanups not chosen).
+
+### S11 decisions
+
+> 1A, 2 - since the HR team would import actully from excel, so let us create a excel with 10000 records. 3 - yes, 4 - yes, 5 - add this too import excel, 6A, 7 - yes
+
+Notes: Decisions: candidates seeded at end of S15; data loads through an employee Excel import (EMP-02) with a 10,000-row generated workbook including compensation; demo accounts as EMP101...; SEED prefixes; leave seeded per 6A; small-size specs plus one timed full run. Raised follow-up questions on the import design.
+
+### S11 employee import design
+
+> 1. the excel should have these columns, all employee columns, compensation columns (not a separate sheet), managers employee code also in same excel, first just import the employees and then again loop the same excel and map the managers.
+>
+> 1. we will provide a separate api for update, where they will use the same excel, and we will append the compensations.
+> 2. no preview step
+> 3. While importing the employees, create the user record too, with a default password.
+> 4. A
+> 5. use ActiveRecord-Import.
+>
+> new table is fine
+
+Notes: Chunk S11-1: added activerecord-import (~> 3.0, approved); migration employee_imports (uploaded_by, mode create/update, status, counts, row_errors jsonb, error_message; check constraints); EmployeeImport model (xlsx via Mime[:xlsx], 10 MB limit); factory. Specs: spec/models/employee_import_spec.rb (6). Red confirmed. RSpec 327/0, RuboCop clean, Brakeman 0. Production lines about 40 (model 22 + migration 16 + Gemfile 1). Asked about the component column format and the default password source. Decisions: one sheet with employee, compensation and manager employee ID columns; pass 1 imports employees, pass 2 maps managers; create import rejects existing rows, a separate update import (same workbook) appends compensation; no preview; users created with a default password; import lives in S11; activerecord-import gem approved; employee_imports table approved.
+
+### S11 compensation columns and default password
+
+> 1A, 2 rails credential
+
+Notes: Components as "component: <name>" columns (annual amounts, blanks skipped); default password from Rails credential employee_import.default_password (hashed once per import). Chunk S11-2: Employees::SheetParser (app/services/employees/sheet_parser.rb): required/optional headers, component columns, department by name or code, status default active, digit-only floats kept as strings, row errors (department, start date, amounts, no components, in-file duplicate employee ID/work email), blank rows skipped, invalid workbook rejected. Specs: spec/services/employees/sheet_parser_spec.rb (6). Red confirmed. RSpec 333/0, RuboCop clean, Brakeman 0. Production lines about 63 (over the limit).
+
+### List the employee Excel headers
+
+> list me the headers which gonna be present in the excel
+
+Notes: Question only; listed the employee import headers as implemented in Employees::SheetParser (S11-2). No code changed.
+
+### Fixed component columns, no status column
+
+> don't name it as component: <name>, it is defined right, we know that right? so let it be Basic, HRA. Special Allowance.
+> right now, there is no onboarding being used, all are active, so column in not required.
+
+Notes: Correction to S11-2: component columns are the fixed Basic, HRA, Special Allowance headers (no prefix, all three required, blank cells skipped, at least one positive amount per row); status column removed, imported employees are always active (a status column is ignored). Specs updated first (7 failing), parser updated. RSpec 334/0, RuboCop clean. Parser production lines about 60.
+
+### User adds the default password credential
+
+> i will
+
+Notes: User will add employee_import.default_password to the Rails credentials. Gave the expected key layout. S11-2 correction still awaiting approval to start S11-3. No code changed.
+
+### Continue S11-3
+
+> approved, continue to the next chunk
+
+Notes: Split into S11-3a and S11-3b. Chunk S11-3a: Employees::ImportRows (app/services/employees/import_rows.rb): records parser row errors, rejects existing employee IDs/work emails (two lookups), bulk-inserts employees per 1000-row batch in a transaction with activerecord-import (model validations, uniqueness pre-checked), reports failed instances per row, creates standard-employee users with the shared password digest or links an existing user by email, bulk-updates user_id. Specs: spec/services/employees/import_rows_spec.rb (6, incl. bulk insert count). Red confirmed. RSpec 340/0, RuboCop clean, Brakeman 0. Production lines about 52.
+
+### Continue S11-3b
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11-3b. Employees::ImportCompensation (app/services/employees/import_compensation.rb): bulk compensations (effective start date or given date, CTC = component sum, employee currency) and components. Leaves::GrantEntitlements.grant_all: bulk default entitlements, ON CONFLICT DO NOTHING. ImportRows calls both inside each batch transaction. Specs: import_compensation_spec (2), grant_entitlements_bulk_spec (1), import_rows_spec (+1 bulk insert counts). Red confirmed. Production lines about 27.
+
+### Continue S11-4
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11-4. Employees::MapManagers (app/services/employees/map_managers.rb): pass 2 resolves manager_employee_id against existing and imported employees, loads the id->manager tree once, rejects unknown managers, self-management and cycles per row, updates once per distinct manager. Specs: spec/services/employees/map_managers_spec.rb (5). Red confirmed. RSpec 349/0, RuboCop clean, Brakeman 0. Production lines about 42.
+
+### Continue S11-5
+
+> approved, continue to the next chunk
+
+Notes: Split into S11-5a and S11-5b. Chunk S11-5a: Employees::ImportSheet (app/services/employees/import_sheet.rb): default password from credentials hashed once (fails the import if missing), parse, pass 1, pass 2, summary with sorted row errors; header errors fail the import. ImportEmployeeSheetJob (app/jobs/import_employee_sheet_job.rb): PostgreSQL advisory lock so one employee import runs at a time (retry_on ImportInProgress, 30 s, 20 attempts), atomic queued -> processing claim, marks failed and re-raises on ActiveRecord errors. Specs: import_sheet_spec (3), import_employee_sheet_job_spec (3). Red confirmed. Production lines about 48.
+
+### Continue S11-5b
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11-5b. Api::V1::EmployeeImportsController (create 202 + job, show, template), EmployeeImportPolicy (HR only), Employees::Template (headers from the parser constants plus an example row), routes, docs/api.md S11 section. Specs: spec/requests/api/v1/employee_imports_spec.rb (5, incl. template accepted by the parser). Red confirmed (5 failing). Production lines about 45.
+
+### Manager error recovery and update import decisions
+
+> what will happen if the row is correct and the manger map throws error? and in next upload, the user rectified the error. will the manager get mapped in perfect?
+>
+> questions:
+> B
+> yes, add a disclaimer in the UI
+
+Notes: Answers for S11-6: effective_date as an optional per-row column (blank = upload date); update mode ignores other fields, with a UI disclaimer. Explained that a corrected re-upload in create mode does not map the manager (row rejected as existing); proposed letting the update import map managers. No code changed.
+
+### S11-6 update import decisions
+
+> 1A, 2 yes
+
+Notes: Update import appends compensation (per-row effective_date, blank = upload date; rows with no amounts skip compensation) and runs pass 2 to set or change managers; other fields ignored (UI disclaimer later). Split into S11-6a and S11-6b. Chunk S11-6a: Employees::SheetParser mode: (update requires only employee_id, reads optional effective_date, allows manager-only rows, skips department/start date checks, still flags duplicate employee IDs); Row gains effective_date (default nil). Specs: sheet_parser_spec update mode (3). Red confirmed (3 failing). Production lines about 17.
+
+### Warn to use the update import for manager errors
+
+> for the case, i described, just add a warning row, so that user will know to use the update api to update the manager.
+
+Notes: Addition to the create import: each pass-2 manager error row also carries Employees::ImportSheet::MANAGER_WARNING (employee imported without a manager; correct manager_employee_id and upload with the update import). Same row_errors shape, no API contract change. docs/api.md updated. Spec updated first (1 failing), then green. RSpec 363/0, RuboCop clean. Production lines about 4.
+
+### Continue S11-6b
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11-6b. Employees::UpdateRows (app/services/employees/update_rows.rb): known employees by ID (unknown = row error), rejects an existing compensation on the same date, appends compensation per effective date (blank = today) via ImportCompensation in one transaction, maps managers for applied rows. Employees::ImportSheet chooses create or update (update needs no default password). POST /employee_imports accepts mode. docs/api.md update import section. Specs: update_rows_spec (3), import_sheet_spec (+1), employee_imports_spec (+1). Red confirmed. RSpec 368/0, RuboCop clean, Brakeman 0. Production lines about 50.
+
+### Continue S11-7
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11-7. Demo::EmployeeWorkbook (lib/demo/employee_workbook.rb): deterministic Faker (seed 42) rows in the template layout: 7 demo employees EMP101-EMP107 (Priya->Arjun->Meera India, John->Robert USA, Emily->Carol Canada) plus size SEED##### employees split 60/25/15 India/USA/Canada, 5 reports per manager under each country head, country CTC ranges split Basic/HRA/Special Allowance; ensure_departments creates five demo departments. Rake task demo:employee_workbook[size] writes tmp/demo/employees_<size>.xlsx. Specs: spec/lib/demo/employee_workbook_spec.rb (5, incl. full create import with no errors). Red confirmed. RSpec 373/0, RuboCop clean, Brakeman 0. Ran the task at 10,000: 3.2 s, 1.1 MB file (development departments created). Production lines about 60.
+
+### Continue S11-8
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11-8. Demo::LeaveSeed (lib/demo/leave_seed.rb): deterministic (Random 7) 30% sample of active employees per 1000-employee batch, 1-4 weekdays in the last two months on or after start date, weighted Earned/Sick/Casual/Unpaid; grants entitlements via grant_all; skips existing dates; charges tracked types against the ledger balance (no negatives); bulk inserts records and used entries per batch transaction. Rake demo:seed_leave. Specs: spec/lib/demo/leave_seed_spec.rb (4, incl. re-run creates nothing). Red confirmed. RSpec 377/0, RuboCop clean, Brakeman 0. Production lines about 58.
+
+### Employee import screen
+
+> I have generated the workbook, move to the FE part. So that I will test along with recording of time
+
+Notes: Timed run deferred until the upload screen exists; user will time it through the UI. Chunk S11-9a (frontend): new src/api/employeeImports.ts (upload with mode, status, template) and src/pages/EmployeeImportPage.tsx (template download, upload as create, 2 s polling, summary with row errors and warnings, failure alert, client-side 'Finished in N s'); HR route /employee-import and dashboard link. Tests: api (2), EmployeeImportPage (3), App routing (1). Red confirmed; first green attempt failed because elapsed time was set in an effect pass, fixed by recording it when the final status arrives. Vitest 145 passed, typecheck and lint clean. Production lines about 75 (over the limit). Update mode and disclaimer moved to S11-9b.
+
+### Continue S11-9b
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11-9b (frontend). EmployeeImportPage: Create/Update radio (default Create), update disclaimer (only compensation with optional effective_date and manager_employee_id applied; other columns ignored), upload sends the chosen mode. Tests: EmployeeImportPage (+2). Red confirmed (2 failing). Vitest 147 passed, typecheck and lint clean. Production lines about 9.
+
+### Are create and update imports asynchronous?
+
+> is create and update, asynchronous?
+
+Notes: Question only; confirmed both modes run through ImportEmployeeSheetJob (Solid Queue) with polling. No code changed.
+
+### bin/jobs prints nothing
+
+> i tried bin/jobs, but its not opening up. nothing gets printed!
+
+Notes: bin/jobs from ~/work works (supervisor, dispatcher and 3-thread worker start; Solid Queue logs to log/development.log, not the terminal). Employee import #1 is stuck queued because both its job runs (13:13, 13:21) failed with ActiveJob::UnknownJobClassError (ImportEmployeeSheetJob doesn't exist), which points to a worker running from a copy without the class, most likely the old /mnt/d repo sharing the same database. Advised re-upload with bin/jobs started from ~/work. No code or data changed.
+
+### Import worked
+
+> it worked in perfect
+
+Notes: Import #1 (create, 10,007 rows) completed: job ran in 19.7 s (log), 0 row errors; employees 10,009 (2 earlier), users and compensations created, 30,027 entitlements, countries/currencies correct, reporting depth 6, demo accounts linked (Priya->Arjun->Meera). Recorded in docs/test-plan.md section 9. Leave seed not run yet.
+
+### S11 checks, import errors paging, dashboard employees link, org tree
+
+> 1. worked(real    0m3.446s)
+> 2. checked, its working, but the errors line are too large limit it with paginations
+> 3. yes, its correct
+> 4. yes it worked.
+>
+>
+> employees but is not available in HR dashboard, check that.
+>
+> We need a tree view for employees inside a canvas.
+
+Notes: Recorded leave seed 3.4 s and the AC-05 re-upload check in docs/test-plan.md. Fixed the missing Employees link on the HR dashboard (App test first; Vitest 148 passed). Asked about server-side row error pagination, the org tree design (library, lazy loading, node content, story placement) and S11 sign-off; noted Settings link is also missing.
+
+### Org tree and error paging decisions
+
+> 1A, 2a A, 2b A, 2c yes, 2d A, 3 yes.
+>
+> what if i need to a specific employee's tree view?
+
+Notes: Decisions: server-side row error pagination; @xyflow/react approved; lazy org_chart endpoint; node content as proposed; new story S11a after S11; "3 yes" read as: do the error pagination inside S11, then sign off S11. Answered the specific-employee question with options (focus in full tree via ancestor path, or root at employee) and asked which. Chunk S11-10: GET /employee_imports/:id paginates row_errors (errors_page, errors_per_page default 50 max 200, meta row_errors_total); docs/api.md; frontend getEmployeeImport takes errorsPage and returns data+meta; EmployeeImportPage shows "N rows with errors" and a Pager. Tests: request spec (1), api test updated, page test (1). Red confirmed both sides. RSpec 378/0, RuboCop clean; Vitest 149 passed, typecheck and lint clean. Production lines about 22.
+
+### Settings link, S11 sign-off, org tree focus and root
+
+> approved, both A and B, add settings link
+
+Notes: S11-10 approved. Added the Settings link to the HR dashboard (App test first; Vitest 149 passed). S11 signed off: scope recorded in docs/product-stories.md (employee import, update import, generator, leave seed; candidates moved to S15); CLAUDE.md and AGENTS.md state S11 complete, S11a next. Committed S11 in both repos (CLAUDE.md untracked). Org tree: both focus-in-full-tree (A) and root-at-employee (B) chosen; S11a story text drafted for review.
