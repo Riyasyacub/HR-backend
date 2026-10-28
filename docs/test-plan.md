@@ -131,7 +131,7 @@ From S12 onward add: candidate sign-in and own applications.
 
 ## 8. End-to-end acceptance scenario
 
-Execute only after S18. This is the demo script.
+Execute only after S18, which is now a future plan (see `future-plans.md`). This is the demo script.
 
 1. Register candidate Nisha, sign in, and apply to the open Software Engineer role.
 2. HR moves the application to Screening, then Interview; records an interview; moves to Offer with CTC and start date.

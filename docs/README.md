@@ -4,8 +4,12 @@
 |---|---|
 | [`requirements.md`](requirements.md) | Product requirements for the HR demo (v0.3): scope, roles, hierarchy, data model, 119 requirements, decisions |
 | [`product-stories.md`](product-stories.md) | 18 sequential stories (S01–S18), each with a testable feature, acceptance criteria, and 143 test cases |
+| [`future-plans.md`](future-plans.md) | Unbuilt stories S12–S19, the end-to-end acceptance story, and deferred items from built stories |
 | [`test-plan.md`](test-plan.md) | Sequential execution plan, environments, accounts, regression pack, end-to-end script, traceability, defect severity |
 | [`api.md`](api.md) | JSON conventions, error envelope, and endpoint contracts as they are implemented |
+| [`architecture.md`](architecture.md) | System context, backend layers, auth flow, import / payroll / assistant workflows, data model, frontend structure (Mermaid diagrams) |
+| [`trade-offs.md`](trade-offs.md) | Key decisions, the alternatives considered, and what each choice costs |
+| [`performance.md`](performance.md) | Measured timings, query patterns, indexes, bulk processing, assistant cost controls, known limits |
 
 ## Reading order
 

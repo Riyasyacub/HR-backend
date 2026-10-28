@@ -1773,3 +1773,31 @@ Notes: Correction to S11c-12 (frontend part): removed the "How this was answered
 > approved
 
 Notes: S11c signed off (smoke pack deferred to the end). CLAUDE.md and AGENTS.md current state: S11c complete, S12 next. Committed S11c in both repos (CLAUDE.md untracked).
+
+### Technical documentation
+
+> stop here, that's it. generate the following technical docs:
+>
+> Architecture diagrams
+> Trade‑off explanations
+> Performance considerations
+
+Notes: Development stops after S11c. Added docs/architecture.md (Mermaid: system context, backend layers, auth sequence, import sequence, payroll state machine, assistant pipeline and scoping, provider class diagram, ER diagram, frontend structure), docs/trade-offs.md (platform, security, data/workflow, assistant and process decisions with alternatives and costs), docs/performance.md (measured timings, query and index patterns, bulk work, assistant cost controls, frontend, known limits); linked from docs/README.md. Documentation only; not committed.
+
+### Fix the auth sequence diagram parse error
+
+> 3. Authentication and session flow throws parse error.
+
+Notes: Correction to docs/architecture.md: Mermaid treats ';' as a statement separator. Replaced the semicolon (and '>') in the auth sequence's refresh message, and the semicolon in the payroll state diagram's generate label, which had the same problem. No semicolons remain inside Mermaid blocks. Documentation only.
+
+### Commit the technical docs
+
+> commit the docs
+
+Notes: Interrupted by the next request before committing.
+
+### Move the remaining stories to future plans
+
+> move the other stories as future plans
+
+Notes: Moved S12-S19 and the end-to-end acceptance story unchanged from docs/product-stories.md into new docs/future-plans.md, with a deferred-items table from the built stories. product-stories.md: status line, story map adds S11a-S11c and marks S12-S19 as future plans, closing Future plans pointer. docs/README.md links future-plans.md; test-plan.md section 8 notes S18 is a future plan; CLAUDE.md and AGENTS.md current state updated. Then committed the docs (architecture, trade-offs, performance, future plans) in the backend repo.
