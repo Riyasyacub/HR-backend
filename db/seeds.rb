@@ -22,3 +22,6 @@ LeaveType::NAMES.each do |name|
   LeaveType.create_with(default_entitlement: LeaveType::DEFAULT_ENTITLEMENTS[name])
     .find_or_create_by!(name:)
 end
+
+# The same departments the demo employee workbook uses, so it imports without unknown-department errors.
+Demo::EmployeeWorkbook.ensure_departments

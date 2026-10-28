@@ -1,0 +1,82 @@
+# Runs the HR demo locally in development mode: PostgreSQL, the Rails API, the Solid Queue worker,
+# the Vite dev server for the React frontend, and Mailhog. Both repos are mounted, so code changes apply live.
+# Expects ../incubyte-FE next to this repo and config/master.key present (credentials are read from it).
+# Optional: ASSISTANT_MODEL=<openrouter model> in .env. Start with: docker compose up --build
+name: incubyte
+
+x-rails: &rails
+  build:
+    context: .
+    dockerfile: Dockerfile.dev
+  image: incubyte-api-dev
+  environment:
+    PGHOST: db
+    PGUSER: incubyte
+    PGPASSWORD: incubyte
+    SMTP_ADDRESS: mailhog
+    ASSISTANT_MODEL: ${ASSISTANT_MODEL:-openai/gpt-4o-mini}
+  volumes:
+    - .:/rails
+    - bundle:/usr/local/bundle
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: incubyte
+      POSTGRES_PASSWORD: incubyte
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U incubyte"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    <<: *rails
+    command: ["bash", "-c", "rm -f tmp/pids/server.pid && bin/rails db:prepare && bin/rails server -b 0.0.0.0 -p 3000"]
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/up"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 30s
+
+  jobs:
+    <<: *rails
+    command: ["bin/jobs"]
+    depends_on:
+      web:
+        condition: service_healthy
+
+  fe:
+    image: node:24-slim
+    working_dir: /app
+    command: ["bash", "-c", "npm ci && npm run dev -- --host 0.0.0.0"]
+    environment:
+      VITE_API_PROXY_TARGET: http://web:3000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../incubyte-FE:/app
+      - fe-node-modules:/app/node_modules
+    depends_on:
+      web:
+        condition: service_healthy
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  db-data:
+  bundle:
+  fe-node-modules:

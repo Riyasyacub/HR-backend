@@ -1801,3 +1801,35 @@ Notes: Interrupted by the next request before committing.
 > move the other stories as future plans
 
 Notes: Moved S12-S19 and the end-to-end acceptance story unchanged from docs/product-stories.md into new docs/future-plans.md, with a deferred-items table from the built stories. product-stories.md: status line, story map adds S11a-S11c and marks S12-S19 as future plans, closing Future plans pointer. docs/README.md links future-plans.md; test-plan.md section 8 notes S18 is a future plan; CLAUDE.md and AGENTS.md current state updated. Then committed the docs (architecture, trade-offs, performance, future plans) in the backend repo.
+
+### Docker Compose for backend, jobs and frontend
+
+> Generate a docker-compose file including job, FE and BE
+
+Notes: Added docker-compose.yml (backend repo): db (postgres:18, incubyte user), web (existing production Dockerfile, db:prepare on start, /up healthcheck, port 3000), jobs (same image, bin/jobs, waits for healthy web), fe (../incubyte-FE, port 8080); shared storage and db volumes; RAILS_MASTER_KEY required from .env. Added .env.docker.example. Frontend repo: Dockerfile (node 24 build, nginx 1.29), nginx.conf (SPA fallback, /api proxy to web so the browser stays same-origin, 12 MB uploads), .dockerignore. Mailhog left out: no built feature sends mail and production has no SMTP settings. docker compose config validated. The image build smoke check could not run: permission denied on /var/run/docker.sock (user not allowed to use the Docker daemon); images not built. Not committed.
+
+### Use development mode for Docker
+
+> since this is a demo, no production environment is required. use development
+
+Notes: Correction to the Docker setup: development mode throughout. New Dockerfile.dev (ruby 3.4.1-slim, all gem groups, source mounted); docker-compose.yml rewritten: db (postgres:18), web (bin/rails db:prepare + server on 3000, /up healthcheck), jobs (bin/jobs after healthy web), fe (node:24-slim running the Vite dev server on 5173 with VITE_API_PROXY_TARGET=http://web:3000), mailhog (1025/8025); bundle, node_modules and db volumes. Removed the production-only frontend Dockerfile, nginx.conf and .dockerignore (created last turn, never committed). Config: development.rb reads SMTP_ADDRESS (default localhost) and allows host "web"; vite.config.ts reads VITE_API_PROXY_TARGET (default http://localhost:3000). .env.docker.example removed (git-ignored by /.env*; no secrets needed in development); ASSISTANT_MODEL override documented in the compose header. Noticed an unrelated, user-made change in config/database.yml (production username/password removed); left untouched. Smoke checks: compose config valid, Rails boots with the new settings, RuboCop clean, RSpec green, frontend typecheck/lint clean and Vitest 193 passed. Images not built here (no Docker socket access). Not committed.
+
+### Seed the default departments
+
+> the default departments are not added in the seed, do that
+>
+> for departments infer from @tmp/demo/employees_10000.xlsx
+
+Notes: Read tmp/demo/employees_10000.xlsx: its department column holds exactly Engineering, Finance, Human Resources, Sales and Operations, matching Demo::EmployeeWorkbook::DEPARTMENTS (ENG, FIN, HRM, SAL, OPS). db/seeds.rb now calls Demo::EmployeeWorkbook.ensure_departments (one source for the generator and the seed; find_or_create_by code, idempotent). spec/seeds_spec.rb: five departments created once (red first). RSpec 465/0, RuboCop clean; db:seed run on development (5 present). Not committed.
+
+### Seed everything the demo Excel upload needs
+
+> No, I will upload the excel in the demo. it should give success there. make the dependecies in the seed
+
+Notes: Dependencies of the employee upload: roles, leave types, the five workbook departments and the demo users are all in db/seeds.rb (departments added in the previous turn); countries are a code constant; the default password is a credential (confirmed set in development). Added a seeds spec: a freshly seeded database imports a generated demo workbook (37 rows) with status completed and zero row errors, linking priya@demo.test to EMP101 (passed on first run, since the departments were already seeded). Checked the real tmp/demo/employees_10000.xlsx: 10,007 rows, 0 parser errors against the seeded data. Noted the development database already holds the imported employees, so the demo needs a fresh database (db:reset or a new Docker volume). RSpec 466/0, RuboCop clean. Not committed.
+
+### Update the README and commit
+
+> it worked. Alter the readme accordingly and then commit along with prompts.md
+
+Notes: Docker demo setup confirmed working by the user. Rewrote README.md (features, Docker demo with service table and walkthrough, local run, seed data, tests, configuration) and updated ../incubyte-FE/README.md (current stage, Docker notes and VITE_API_PROXY_TARGET). Committed in the backend repo: README, docker-compose.yml, Dockerfile.dev, development.rb (SMTP_ADDRESS, web host), seeds (departments) and seeds spec, prompt log; and in the frontend repo: vite.config.ts and README. The user's uncommitted config/database.yml change (production username/password removed) was left out of the commit; CLAUDE.md stays untracked.

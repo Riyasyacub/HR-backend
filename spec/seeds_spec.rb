@@ -25,4 +25,29 @@ RSpec.describe "Demo seeds" do
     expect(LeaveType.find_by!(name: "Casual").default_entitlement).to eq(6)
     expect(LeaveType.find_by!(name: "Unpaid").default_entitlement).to be_nil
   end
+
+  it "creates the demo workbook's five departments idempotently" do
+    expect { load Rails.root.join("db/seeds.rb") }.to change(Department, :count).by(5)
+    expect { load Rails.root.join("db/seeds.rb") }.not_to change(Department, :count)
+
+    expect(Department.order(:code).pluck(:code, :name)).to eq([ %w[ENG Engineering], %w[FIN Finance], [ "HRM", "Human Resources" ],
+      %w[OPS Operations], %w[SAL Sales] ])
+  end
+
+  it "prepares everything the demo employee workbook needs, so its upload imports with no row errors" do
+    load Rails.root.join("db/seeds.rb")
+    path = Rails.root.join("tmp/seeds_spec_workbook.xlsx")
+    Demo::EmployeeWorkbook.write(path, size: 30)
+    allow(Rails.application.credentials).to receive(:dig).and_call_original
+    allow(Rails.application.credentials).to receive(:dig).with(:employee_import, :default_password).and_return("Import@1234")
+    employee_import = create(:employee_import, status: "processing",
+      file: Rack::Test::UploadedFile.new(path, EmployeeImport::XLSX_CONTENT_TYPE, original_filename: "employees.xlsx"))
+
+    Employees::ImportSheet.call(employee_import)
+
+    expect(employee_import.reload).to have_attributes(status: "completed", total_rows: 37, imported_rows: 37, row_errors: [])
+    expect(User.find_by!(email: "priya@demo.test").employee.employee_id).to eq("EMP101")
+  ensure
+    FileUtils.rm_f(path)
+  end
 end

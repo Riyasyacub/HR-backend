@@ -1,0 +1,14 @@
+# Development image for docker-compose.yml: all gem groups, source mounted at /rails.
+FROM docker.io/library/ruby:3.4.1-slim
+
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential curl git libpq-dev libvips libyaml-dev pkg-config postgresql-client && \
+    rm -rf /var/lib/apt/lists /var/cache/apt/archives
+
+WORKDIR /rails
+ENV RAILS_ENV=development BUNDLE_PATH=/usr/local/bundle
+
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+
+EXPOSE 3000

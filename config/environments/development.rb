@@ -40,7 +40,10 @@ Rails.application.configure do
 
   # Deliver all development email to Mailhog for inspection.
   config.action_mailer.delivery_method = :smtp
-  config.action_mailer.smtp_settings = { address: "localhost", port: 1025 }
+  config.action_mailer.smtp_settings = { address: ENV.fetch("SMTP_ADDRESS", "localhost"), port: 1025 }
+
+  # The Vite dev server proxies API calls to this host name when running under docker compose.
+  config.hosts << "web"
 
   # Print deprecation notices to the Rails logger.
   config.active_support.deprecation = :log
