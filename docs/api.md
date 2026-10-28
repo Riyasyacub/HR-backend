@@ -874,3 +874,58 @@ start dates until leavers exist in S18); `joiners` counts active employees by st
   }
 }
 ```
+
+## S11c NL-to-SQL assistant
+
+### POST `/api/v1/assistant/queries`
+
+Any signed-in user with an employee record, or HR. Body `{ "question": "headcount by country" }`
+(1–500 characters). The question is answered only from the asker's scoped data; the generated SQL is
+never returned.
+
+```json
+{
+  "data": {
+    "columns": ["country", "headcount"],
+    "rows": [["India", 6005], ["USA", 2502]],
+    "row_count": 2,
+    "truncated": false,
+    "cached": false,
+    "explanation": "Counted active employees grouped by country."
+  }
+}
+```
+
+`explanation` is the model's one-sentence description of what the query computes (no SQL); it may be
+`null`. Errors: `422 validation_failed` (blank or longer than 500 characters; the model is not called),
+`422 cannot_answer` (the data needed is not available or no working query could be produced; the
+message carries the model's reason), `422 needs_clarification` (the question is ambiguous; the message
+is the model's clarifying question), `422 unsafe_query` (the generated
+SQL failed validation twice; generic message, no SQL or relation names), `429 rate_limited`
+(10 questions per minute or the daily token budget, both in `config/assistant.yml`),
+`503 assistant_unavailable` (provider error or 3-second query timeout), `403` for users without an
+employee record who are not HR. `cached: true` means no model call was made (result or SQL cache).
+
+The model must reply with JSON `{ "status": "success" | "cannot_answer" | "needs_clarification", "sql", "failure_reason" }`;
+the reason (or the validator/database error) is stored in `assistant_queries.failure_reason`.
+
+### GET `/api/v1/assistant/queries`
+
+The caller's own question history, newest first, offset-paginated (`page`, `per_page` default 20,
+max 100). Never includes generated SQL or result rows; ask the question again to see its answer
+(served from the result or SQL cache when available).
+
+```json
+{
+  "data": [
+    { "id": 29, "question": "sum of payroll previous month grouped by top level managers", "status": "answered",
+      "message": null, "created_at": "2026-10-28T10:15:00Z" },
+    { "id": 12, "question": "payroll totals", "status": "rejected", "message": "Which year do you mean?",
+      "created_at": "2026-10-28T09:40:00Z" }
+  ],
+  "meta": { "page": 1, "per_page": 20, "total": 2 }
+}
+```
+
+`message` explains a failure: the model's reason for `cannot_answer` and `needs_clarification`, and a
+generic text for unsafe queries, rate limits, and provider errors.

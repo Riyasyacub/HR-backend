@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_105738) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_28_094020) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_105738) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "assistant_queries", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "question", limit: 500, null: false
+    t.text "generated_sql"
+    t.string "status", null: false
+    t.string "error_code"
+    t.integer "row_count"
+    t.integer "duration_ms"
+    t.integer "prompt_tokens", default: 0, null: false
+    t.integer "completion_tokens", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.string "failure_reason", limit: 500
+    t.index ["user_id", "created_at"], name: "index_assistant_queries_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_assistant_queries_on_user_id"
+    t.check_constraint "status::text = ANY (ARRAY['answered'::character varying::text, 'cached'::character varying::text, 'rejected'::character varying::text, 'failed'::character varying::text])", name: "assistant_queries_status_known"
   end
 
   create_table "audit_entries", force: :cascade do |t|
@@ -98,8 +115,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_105738) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["uploaded_by_id"], name: "index_employee_imports_on_uploaded_by_id"
-    t.check_constraint "mode::text = ANY (ARRAY['create'::character varying, 'update'::character varying]::text[])", name: "employee_imports_mode_known"
-    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'processing'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])", name: "employee_imports_status_known"
+    t.check_constraint "mode::text = ANY (ARRAY['create'::character varying::text, 'update'::character varying::text])", name: "employee_imports_mode_known"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying::text, 'processing'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text])", name: "employee_imports_status_known"
   end
 
   create_table "employees", force: :cascade do |t|
@@ -261,6 +278,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_105738) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "assistant_queries", "users"
   add_foreign_key "audit_entries", "users", column: "actor_id"
   add_foreign_key "compensation_components", "compensations"
   add_foreign_key "compensations", "employees"

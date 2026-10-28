@@ -1,0 +1,29 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "2f06a578b465135c4a6082e2a2b413cc027fc72f632de4209a506e8f0883a365",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/assistant/executor.rb",
+      "line": 17,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "ActiveRecord::Base.connection.select_all(\"#{schema.cte_sql(:only => relations)} SELECT * FROM (#{sql}) assistant_result LIMIT #{(Integer(limit) + 1)}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Assistant::Executor",
+        "method": "self.call"
+      },
+      "user_input": "schema.cte_sql(:only => relations)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Intended: Assistant::Executor runs model-generated SQL. It is parsed and allowlisted by Assistant::SqlValidator (single SELECT, scoped virtual relations only, allowlisted functions), reads only per-user scoped CTEs, and runs read-only with a 3 s timeout and a 200-row cap."
+    }
+  ],
+  "updated": "2026-10-28",
+  "brakeman_version": "8.1.0"
+}

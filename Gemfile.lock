@@ -129,6 +129,21 @@ GEM
       raabro (~> 1.4)
     globalid (1.4.0)
       activesupport (>= 6.1)
+    google-protobuf (4.36.2)
+      bigdecimal
+      rake (~> 13.3)
+    google-protobuf (4.36.2-aarch64-linux-gnu)
+      bigdecimal
+      rake (~> 13.3)
+    google-protobuf (4.36.2-aarch64-linux-musl)
+      bigdecimal
+      rake (~> 13.3)
+    google-protobuf (4.36.2-x86_64-linux-gnu)
+      bigdecimal
+      rake (~> 13.3)
+    google-protobuf (4.36.2-x86_64-linux-musl)
+      bigdecimal
+      rake (~> 13.3)
     htmlentities (4.4.2)
     i18n (1.15.2)
       concurrent-ruby (~> 1.0)
@@ -212,6 +227,8 @@ GEM
     pg (1.7.0-aarch64-linux-musl)
     pg (1.7.0-x86_64-linux)
     pg (1.7.0-x86_64-linux-musl)
+    pg_query (6.2.5)
+      google-protobuf (>= 4.34.0)
     pp (0.6.4)
       prettyprint
     prettyprint (0.2.1)
@@ -400,6 +417,7 @@ DEPENDENCIES
   jwt
   kamal
   pg (~> 1.1)
+  pg_query (~> 6.2)
   puma (>= 5.0)
   pundit
   rack-cors

@@ -1604,4 +1604,172 @@ Notes: Chunk S11b-10 (frontend). SignInPage: brand line, subtitle, soft indigo g
 
 > approved, continue to the next chunk
 
-Notes: In progress. S11b signed off and committed; starting S11c-1.
+Notes: S11b signed off: story text added to docs/product-stories.md; CLAUDE.md and AGENTS.md state S11b complete, S11c next; committed both repos (backend 93648f2, frontend 1afdf64; CLAUDE.md untracked). Chunk S11c-1: S11c story (AC-01..AC-08, TC-S11c-01..08) and POST /api/v1/assistant/queries contract in docs; pg_query ~> 6.2 added (approved; pulls google-protobuf); migration assistant_queries (append-only audit, status check constraint, user/created_at index); AssistantQuery model (read-only once saved). Specs: spec/models/assistant_query_spec.rb (5, incl. pg_query smoke). Red confirmed. RSpec 399/0, RuboCop clean, Brakeman 0. Production lines about 30 (model 10, migration 18, Gemfile 1).
+
+### Why assistant_queries has no full timestamps
+
+> 1. why timestamps is missed in the schema for assitant_queries?
+
+Notes: Question only. Explained that only created_at is kept because audit rows are append-only (read-only once saved), so updated_at would always equal created_at; offered to switch to t.timestamps for convention. No code changed.
+
+### Keep created_at only; continue S11c-2
+
+> created_At only is fine.
+> approved, proceed to the next chunk
+
+Notes: assistant_queries keeps created_at only. Chunk S11c-2: config/assistant.yml (provider open_router, model from ASSISTANT_MODEL defaulting to openai/gpt-4o-mini, max_tokens 400, temperature 0, 15 s timeout, base URL) loaded as config.x.assistant; Assistant::LlmProvider template base (complete builds headers, payload, Net::HTTP post with timeouts, extracts text and usage; transport and parse failures become LlmProvider::Error with safe messages; build picks the class from config); Assistant::OpenRouterProvider (chat completions, bearer key from credentials openrouter.api_key, missing key fails before any request). Specs: spec/services/assistant/llm_provider_spec.rb (5, Net::HTTP stubbed). Red confirmed. RSpec 404/0, RuboCop clean, Brakeman 0. Production lines about 60 (over the limit; includes 16 lines of YAML).
+
+### OpenRouter key added; continue S11c-3
+
+> setup completed
+> approved, proceed to the next chunk
+
+Notes: User added the openrouter.api_key credential. Chunk S11c-3: AssistantPolicy (create? for HR or users with an employee record; Scope: HR all, otherwise self plus subtree, like LeaveRecordPolicy). Assistant::ScopedSchema (app/services/assistant/scoped_schema.rb): virtual relations employees, departments, leave_types, leave_records, leave_ledger_entries for every tier plus compensations, payroll_runs, payroll_lines for HR; allowlisted columns only (no bank or contact fields for anyone); cte_sql, prompt_schema, tier. Checked the generated manager CTE SQL against development data. Specs: spec/services/assistant/scoped_schema_spec.rb (5). Red confirmed. RSpec 409/0, RuboCop clean, Brakeman 0. Production lines about 50.
+
+### Why every CTE, and why not authorize the raw SQL
+
+> in the CTE sql why every table is added before even knowing what is the prompt!, if the prompt only requires employees table, we don't need the other tables right?
+>
+> we can explain the schema to the assistant and the assistant can make all there queries right? we can just validate that using pg_query and do authorization check based on the current user right?
+
+Notes: Question about the S11c-3 design. Explained: unreferenced CTEs are not executed by PostgreSQL, but only the referenced ones should be emitted (agreed improvement, planned after validation); authorizing raw-table SQL by inspecting it cannot guarantee row scoping, so scoping is applied by construction (CTEs) or by the database (RLS). Asked which approach to keep. No code changed.
+
+### Keep scoped CTEs; continue S11c-4
+
+> A, approved, proceed to the next chunk
+
+Notes: Option A: keep scoped CTEs, emit only referenced relations. Chunk S11c-4: Assistant::SqlValidator (app/services/assistant/sql_validator.rb, pg_query): one SELECT only, unparseable SQL rejected, no locking or SELECT INTO, no reg* casts, no schema-qualified relations, only allowed virtual relations (model's own CTE names excluded by pg_query), allowlisted functions including the pg_catalog names SQL keyword forms parse to (extract, btrim, substring, position); returns the referenced relation names. Specs: spec/services/assistant/sql_validator_spec.rb (8). Red confirmed; first green run failed on EXTRACT parsing to pg_catalog.extract, fixed with an explicit allowlist entry. RSpec 417/0, RuboCop clean, Brakeman 0. Production lines about 40.
+
+### Continue S11c-5
+
+> approved, proceed to the next chunk
+
+Notes: Verified that SET LOCAL transaction_read_only inside a savepoint blocks writes (PG::ReadOnlySqlTransaction) and reverts afterwards. Chunk S11c-5: ScopedSchema#cte_sql(only:) emits only referenced CTEs (empty string when none). Assistant::Executor (app/services/assistant/executor.rb): savepoint with read-only mode and statement_timeout 3s, scoped CTEs plus SELECT * FROM (sql) LIMIT 201, always rolled back, 200-row cap with truncated flag, QueryCanceled -> Timeout, other statement errors -> QueryFailed with the first line of the database message. Specs: spec/services/assistant/executor_spec.rb (6). Red confirmed; one spec fixed (no exclude matcher). RSpec 423/0, RuboCop clean. Brakeman reports 1 intended SQL-injection warning on the executor's select_all of validated model SQL; asked whether to record it in config/brakeman.ignore. Production lines about 32.
+
+### Record the Brakeman warning; continue S11c-6
+
+> A, approved, proceed to the next chunk
+
+Notes: Recorded the executor's intended SQL-injection warning (fingerprint 2f06a578...) in config/brakeman.ignore with a note naming the protections; Brakeman 0 warnings, 1 ignored. Chunk S11c-6: Assistant::AnswerQuestion (app/services/assistant/answer_question.rb): static instructions then scoped schema as the system prompt; strips code fences and trailing semicolon; CANNOT_ANSWER -> CannotAnswer without repair; validate then execute; one repair attempt with the previous SQL and error after Unsafe or QueryFailed; audit row per request (answered / rejected unsafe_query or cannot_answer / failed assistant_unavailable or timeout) with summed tokens and duration. Specs: spec/services/assistant/answer_question_spec.rb (7, FakeProvider). Red confirmed. RSpec 430/0, RuboCop clean. Production lines about 55 (over the limit).
+
+### Continue S11c-7
+
+> approved, proceed to the next chunk
+
+Notes: Chunk S11c-7. config/assistant.yml gains requests_per_minute 10 and daily_token_budget 50000. Assistant::UsageLimits (check_rate! and check_budget! counted from assistant_queries, independent of the cache store). AnswerQuestion: rate check first; result cache 5 min per user and normalised question; SQL cache 1 day per tier, schema digest and normalised question (runs in the asker's scope, falls back to the model if the cached SQL fails); budget checked only before a model call; cache hits audited as cached with 0 tokens, limit hits as rejected/rate_limited. FakeProvider moved to spec/support/fake_llm_provider.rb as FakeLlmProvider. Specs: usage_limits_spec (2), answer_question_spec (+4). Red confirmed. RSpec 436/0, RuboCop clean, Brakeman 0 (1 ignored). Production lines about 50.
+
+### What is the user: param in the provider call?
+
+> in @app/services/assistant/answer_question.rb line 77, why user param is given with prompt?
+
+Notes: Question only. Explained that user: is the chat "user message" role (the question text), not the signed-in User; no identity is sent to the provider. Offered to rename the keyword to message: to avoid confusion with @user. No code changed.
+
+### Rename the provider keyword; continue S11c-8
+
+> yes change the name.
+>
+> approved, proceed to next chunk
+
+Notes: Renamed the provider keyword to complete(system:, message:) in LlmProvider, OpenRouterProvider (payload still sends role user), AnswerQuestion, FakeLlmProvider and specs; no behaviour change. Chunk S11c-8: Api::V1::AssistantQueriesController#create (AssistantPolicy create?, 1-500 character question else 422 validation_failed before any model call, response without SQL, error mapping cannot_answer/unsafe_query 422 with generic message, rate_limited 429, assistant_unavailable 503); POST /api/v1/assistant/queries; docs/api.md error list updated. Specs: spec/requests/api/v1/assistant_queries_spec.rb (8, FakeLlmProvider via LlmProvider.build stub). Red confirmed (8 failing). RSpec 444/0, RuboCop clean, Brakeman 0 (1 ignored). Production lines about 30 (rename 5, controller 24, route 1).
+
+### Continue S11c-9
+
+> approved, proceed to the next chunk
+
+Notes: Chunk S11c-9 (frontend). New src/api/assistant.ts (askAssistant) and src/pages/AssistantPage.tsx (PageHeader, question box limited to 500 characters, example question buttons, history cards newest first with result table, Cached badge, 200-row note, empty-result text, per-question error alert); /assistant route for every signed-in user; Assistant link in the sidebar Insights group for all roles. Tests: api (1), AssistantPage (5), AppShell expectations updated. Red confirmed. Vitest 188 passed, typecheck and lint clean, build ok; RSpec 444/0. Production lines about 70 (over the limit).
+
+### Why did the payroll-by-top-manager question fail?
+
+> i tried some,
+>
+> sum of payroll last month grouped by top level managers -> The assistant could not answer that question. Why is that?, its a valid question right?. It is from a hr
+
+Notes: Investigated: audit row 10 shows the model itself replied CANNOT_ANSWER (228 prompt / 4 completion tokens, 1.6 s); no SQL was generated, so validation and scoping were not involved. A hand-written recursive top-level-manager query over employees, payroll_lines and payroll_runs passes the validator, so the question is answerable. Cause: the prompt gives only relation/column names, with no relationships (manager_id -> employees.id, top level = manager_id IS NULL), no meaning of payroll columns or month, and no current date. Also noted last month (September 2026) is a draft run. Proposed S11c-10 prompt-context fix; awaiting approval. No code changed.
+
+### Structured JSON replies from the model
+
+> along with the above, make the model to return in a json format of {sql, status: [Success, cannot_answer, some_other_statuses which are required], failure_reason:}, so that we can identify, why the model failed to answer that.
+
+Notes: Chunk S11c-10 (prompt context plus structured replies). Model replies with JSON {status: success | cannot_answer | needs_clarification, sql, failure_reason}; code-fenced JSON accepted; invalid JSON -> cannot_answer "Model reply was not valid JSON". New AnswerQuestion::NeedsClarification -> 422 needs_clarification; cannot_answer now returns the model's reason as the message. Migration adds assistant_queries.failure_reason (string 500) storing the model reason or the validator/database error. Instructions allow WITH and WITH RECURSIVE; each message starts with today's date; ScopedSchema::NOTES add per-relation keys and meanings (top-level managers: manager_id IS NULL, payroll month and total, ledger entry types). OpenRouter sends response_format json_object when json_response is true (config/assistant.yml). docs/api.md updated. Specs: answer_question (+5 and JSON replies), sql_validator recursive CTE (+1), scoped_schema note, llm_provider JSON mode (+1), request needs_clarification (+1); FakeLlmProvider gains sql/cannot_answer/needs_clarification helpers. Red confirmed (19 failing). RSpec 451/0, RuboCop clean, Brakeman 0 (1 ignored). Production lines about 55 (over the limit; notes and instructions are text).
+
+### Wrong result for payroll by top-level manager
+
+> question: sum of payroll this month grouped by top level managers, response:
+>  manager_id    total_payroll
+> —    4833.33
+>
+> still not correct!
+
+Notes: Investigated audit row 11: the model wrote SELECT e.manager_id, SUM(pl.total) ... WHERE e.manager_id IS NULL GROUP BY e.manager_id, i.e. it summed only the top-level managers' own payroll lines and grouped by a column that is always NULL, instead of rolling each employee up to their top-level manager. Data check: the October 2026 paid run has only 2 lines (both under one top-level manager, 8,083.33 INR); September is a 10,007-line draft. A hand-written recursive query gives the correct rollup (October: one top-level manager; September: Meera INR, Robert USD, Carol CAD). Proposed adding a scoped employee_top_managers virtual relation so hierarchy rollups need a simple join, and/or a stronger model. No code changed.
+
+### Research better NL-to-SQL accuracy approaches
+
+> 1 - we can't alter the system prompt for every failure right? surf online find similar problems and suggest me some better solutions.
+> 2A
+
+Notes: 2A (explanation line) accepted. Researched general NL-to-SQL accuracy techniques (semantic layer benchmarks from dbt/Snowflake/AtScale, Vanna-style retrieval of verified question/SQL pairs, user-feedback libraries, execution-feedback self-correction, CHESS/CHASE-SQL multi-step pipelines, model escalation). Recommended: business-level semantic views, a verified-examples library fed by thumbs-up feedback and retrieved per question, and cheap-to-strong model escalation; asked the user to choose. No code changed.
+
+### Semantic views and explanation line
+
+> 1, A and 2A now
+
+Notes: A (semantic views) as S11c-11, then 2A (explanation line) as S11c-12; B and C not now. Chunk S11c-11: new Assistant::SemanticViews (app/services/assistant/semantic_views.rb): employee_top_managers (self-contained WITH RECURSIVE tree over the scoped employees CTE; roots are employees whose manager is not visible), leave_balances (ledger aggregate), and HR-only current_compensation (DISTINCT ON latest) and payroll_summary (lines joined to runs), each with columns, dependencies and a prompt note. ScopedSchema exposes the views as relations, adds their dependencies to cte_sql, names view columns, and keeps the outer WITH non-recursive (WITH RECURSIVE broke the table-shadowing CTEs with PG::InvalidRecursion). Specs: semantic_views_spec (7); scoped_schema relation list updated. Red confirmed. RSpec 458/0, RuboCop clean, Brakeman 0. Development check: the simple-join rollup for September 2026 returns Meera INR 846,376,670.73, Robert USD 26,971,621.21, Carol CAD 14,025,257.42 in 37 ms, matching the hand-written recursive query. Production lines about 40.
+
+### Model claims current payroll is beyond its training data
+
+> sum of payroll this month grouped by top level managers -> The payroll data for the current month is not available as it is beyond the training data limit.
+
+Notes: Audit row 12: gpt-4o-mini returned cannot_answer (622/33 tokens) with the reason above, i.e. it treated the question as one it must answer from its own knowledge; the instructions never say the SQL runs on a live database with current data and the date is only for date ranges. Proposed a one-line task-framing fix (general, not per question), an evaluation rake task with a fixed question set to measure changes and models, and trying a stronger low-cost model via ASSISTANT_MODEL. No code changed.
+
+### Reframe the system prompt with RTCFC
+
+> reframe the System prompt to use RTCFC frame work of prompt engineering
+
+Notes: Interpreted RTCFC as Role, Task, Context, Format, Constraints. Built on the user's in-progress Role/Context edit: INSTRUCTIONS in app/services/assistant/answer_question.rb rewritten as ROLE, TASK, CONTEXT (live database with current data, date only for ranges, relations already permission-scoped, prefer summary views), FORMAT (JSON status/sql/failure_reason), CONSTRAINTS (single SELECT with WITH/WITH RECURSIVE, listed relations only, no schema names, common functions, never mix currencies, cannot_answer only for missing data), then RELATIONS. About 256 words, static so still cacheable. Spec added for the section order and context lines (red first). RSpec 459/0, RuboCop clean. Explanation field (2A) still planned for S11c-12.
+
+### Payroll by top-level manager now answered
+
+> give me sum of payroll previous month grouped by top level managers ->
+>
+> top_manager_id    total_payroll
+> 5    846376670.73
+> 6    26971621.21
+> 8    14025257.42
+
+Notes: Audit row 29 (answered, 853/113 tokens, 4.2 s): the model used payroll_summary joined to employee_top_managers for 2026-09-01; totals match the hand-written query (5 Meera INR, 6 Robert USD, 8 Carol CAD). Gaps: ids instead of names, no currency column (each tree is single-currency here, so the sums are right by luck), and the draft run status is not visible. Proposed two general constraints (readable labels next to ids; include currency when summing amounts) for S11c-12 alongside the explanation line. No code changed.
+
+### Continue S11c-12
+
+> approved, proceed to the next chunk
+
+Notes: S11c-11 and the RTCFC rewrite approved. Chunk S11c-12: FORMAT asks for an explanation (one plain-English sentence on what the query computes, no SQL); CONSTRAINTS add "when you sum or average amounts, also select and group by currency" and "include readable labels such as names next to any id". Answer and the API response gain explanation; result and SQL caches store it (keys bumped to v2). Frontend AssistantAnswer.explanation shown as "How this was answered: ...". docs/api.md updated. Tests: answer_question (+1, cache assertions), request spec, AssistantPage (+1). Red confirmed both sides. RSpec 460/0, RuboCop clean, Brakeman 0; Vitest 189 passed, typecheck and lint clean. Production lines about 25.
+
+### Drop the eval task; assistant history lost on refresh
+
+> S11c-13 is not required. one more bug, whenever i refresh the assitant page, my history vanishes.
+
+Notes: S11c-13 (evaluation task) dropped. History is held only in page state, so a reload clears it; asked how to persist it. No code changed.
+
+### Server-side assistant history
+
+> A
+
+Notes: Option A: own history from assistant_queries, answers re-run on demand (cached). Chunk S11c-13 (backend): AssistantQueryPolicy (index for assistant users; Scope to own rows); AssistantQueriesController#index (newest first, per_page default 20 max 100, id/question/status/message/created_at, no SQL; message = model reason for cannot_answer and needs_clarification, generic text for unsafe, rate limit, provider failures); GET /api/v1/assistant/queries; docs/api.md. Specs: request spec (+4). Red confirmed (4 failing). RSpec 464/0, RuboCop clean, Brakeman 0. Production lines about 30.
+
+### Continue S11c-14
+
+> approved, proceed to the next chunk
+
+Notes: Chunk S11c-14 (frontend). listAssistantHistory in src/api/assistant.ts; AssistantPage loads the last 20 questions on open (failed ones show their message; answered ones offer Show answer, which re-asks and is served from the server cache), new questions stay on top; history load replaces earlier history entries (StrictMode double effect) while keeping questions asked this visit. Tests: api (1), AssistantPage history (3). Red confirmed (4 failing). Vitest 193 passed, typecheck and lint clean, build ok. Production lines about 30.
+
+### Hide the explanation line in the UI
+
+> hide the "How this was answered" section from FE
+
+Notes: Correction to S11c-12 (frontend part): removed the "How this was answered" line from src/pages/AssistantPage.tsx; test changed to assert it is not shown (red first). The model still returns explanation and the API still includes it. Vitest 193 passed, typecheck and lint clean. Production lines -1.
+
+### S11c sign-off
+
+> approved
+
+Notes: S11c signed off (smoke pack deferred to the end). CLAUDE.md and AGENTS.md current state: S11c complete, S12 next. Committed S11c in both repos (CLAUDE.md untracked).

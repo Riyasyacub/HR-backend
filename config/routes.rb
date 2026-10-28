@@ -19,6 +19,8 @@ Rails.application.routes.draw do
         member { get :leave_balances }
       end
       resources :leave_records, only: %i[index show]
+      get "assistant/queries", to: "assistant_queries#index"
+      post "assistant/queries", to: "assistant_queries#create"
       get "org_chart", to: "org_charts#show"
       get "org_chart/path", to: "org_charts#path"
       get "reports/headcount", to: "reports#headcount"

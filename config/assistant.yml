@@ -1,0 +1,19 @@
+default: &default
+  provider: open_router
+  model: <%= ENV.fetch("ASSISTANT_MODEL", "qwen/qwen-2.5-coder-32b-instruct") %>
+  max_tokens: 400
+  temperature: 0
+  json_response: true
+  timeout_seconds: 15
+  base_url: https://openrouter.ai/api/v1
+  requests_per_minute: 10
+  daily_token_budget: 50000
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default

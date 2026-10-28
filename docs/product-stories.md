@@ -586,6 +586,51 @@ As any user, I want a consistent, modern interface with clear navigation and an 
 
 ---
 
+## S11c — NL-to-SQL assistant
+
+| | |
+|---|---|
+| Epic | Insights |
+| Priority | P1 |
+| Depends on | S10, S11b |
+| Covers | Self-service questions over HR data within each user's visibility |
+
+**Story**
+As any signed-in user, I want to ask a question in plain English and get a result table, so that I can answer ad-hoc questions without building a report, while seeing only data I am allowed to see.
+
+**Feature**
+- The question is turned into SQL by a configurable LLM provider (OpenRouter first; template-pattern provider classes allow switching).
+- The SQL may only read per-request **scoped virtual relations** built from the existing Pundit scopes: HR sees all employees, departments, leave, compensation, and payroll lines; a manager sees themselves and their subtree without salary, CTC, or bank columns; an employee sees only their own records.
+- Generated SQL is parsed with `pg_query` and rejected unless it is a single `SELECT` over the virtual relations using allowlisted functions; it runs read-only with a 3-second timeout and at most 200 rows.
+- Cost controls: SQL cache per question and access tier, 5-minute result cache, per-user rate limit and daily token budget.
+- The generated SQL is never shown to users; every request is recorded in an append-only audit table.
+
+**Acceptance criteria**
+
+- **AC-01** A valid question returns columns and rows (at most 200, flagged when truncated).
+- **AC-02** Results never include rows or columns outside the asker's visibility, whatever SQL is generated.
+- **AC-03** Non-SELECT statements, multiple statements, system catalogs, unknown relations, schema-qualified names, and non-allowlisted functions are rejected and never executed.
+- **AC-04** Execution cannot modify data and stops after 3 seconds.
+- **AC-05** A repeated question within an access tier does not call the model again.
+- **AC-06** Rate limit and daily budget breaches return a clear error.
+- **AC-07** Every request is audited (question, SQL, status, row count, duration, tokens).
+- **AC-08** The provider and model are configurable without code changes; the API key comes from credentials.
+
+**Test cases**
+
+| ID | Type | Given | When | Then |
+|---|---|---|---|---|
+| TC-S11c-01 | H | HR signed in | Ask "headcount by country" | Rows per country with counts |
+| TC-S11c-02 | P | Arjun (manager) signed in | Ask for salaries or for Robert's team | No compensation relation; only Arjun's subtree rows |
+| TC-S11c-03 | P | Priya (employee) signed in | Ask "show all employees" | Only Priya's own row |
+| TC-S11c-04 | N | Model returns `DELETE FROM employees` | Ask anything | Rejected as unsafe; nothing executed |
+| TC-S11c-05 | N | Model returns `SELECT * FROM pg_catalog.pg_user` | Ask anything | Rejected as unsafe |
+| TC-S11c-06 | E | Same question asked twice by HR | Second ask | Served from cache; no model call |
+| TC-S11c-07 | N | User exceeds the per-minute limit | Ask again | `429 rate_limited` |
+| TC-S11c-08 | E | Provider times out | Ask | `503 assistant_unavailable`; audit row records the failure |
+
+---
+
 ## S12 — Candidate registration, login, and profile
 
 | | |

@@ -61,3 +61,5 @@ group :development, :test do
 end
 
 gem "activerecord-import", "~> 3.0"
+
+gem "pg_query", "~> 6.2"

@@ -38,5 +38,6 @@ module Incubyte
 
     config.x.session_inactivity_window = 8.hours
     config.x.access_token_lifetime = 15.minutes
+    config.x.assistant = config_for(:assistant)
   end
 end
