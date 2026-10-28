@@ -25,6 +25,7 @@ Rails.application.routes.draw do
       get "reports/joiners", to: "reports#joiners"
       get "reports/leave", to: "reports#leave"
       get "reports/payroll", to: "reports#payroll"
+      get "reports/trends", to: "reports#trends"
       resources :payroll_runs, only: %i[index create show] do
         member do
           post :recalculate

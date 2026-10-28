@@ -15,8 +15,8 @@ class Api::V1::ReportsController < ApplicationController
       filters: params.permit(:country, :department_id).to_h)
     totals = { headcount: rows.sum { |row| row["headcount"] }, onboarding: rows.sum { |row| row["onboarding"] } }
     if request.format.xlsx?
-      return send_report("headcount", [ params[:group_by].capitalize, "Headcount", "Onboarding" ],
-        rows.map(&:values) + [ [ "Total", *totals.values ] ])
+      return send_report("headcount", [ params[:group_by].capitalize, "Headcount" ],
+        rows.map { _1.values_at("group", "headcount") } + [ [ "Total", totals[:headcount] ] ])
     end
 
     render json: { data: rows, meta: { group_by: params[:group_by], **totals } }
@@ -59,6 +59,12 @@ class Api::V1::ReportsController < ApplicationController
     end
 
     render json: { data: rows, meta: { year: } }
+  end
+
+  def trends
+    authorize :report, :trends?
+    months = params.fetch(:months, 12).to_i.clamp(1, 24)
+    render json: { data: Reports::Trends.new(policy_scope(Employee), months:, include_payroll: current_user.hr?).call }
   end
 
   private

@@ -685,8 +685,8 @@ employees get `403`. No report returns salary, CTC, or bank data.
 
 **XLSX export:** add `format=xlsx` (or use a `.xlsx` path) to any report URL with the same
 filters to download `<report>-YYYY-MM-DD.xlsx`. The file holds every row matching the filters (not
-only the current page) with the same values as the JSON; headcount adds a `Total` row and payroll
-amounts are numbers. Export permissions are the same as the JSON report.
+only the current page) with the same values as the screen; headcount has group and Headcount columns
+plus a `Total` row (the onboarding count stays in the JSON only) and payroll amounts are numbers. Export permissions are the same as the JSON report.
 
 ### GET `/api/v1/reports/headcount`
 
@@ -851,5 +851,26 @@ the tree on one employee.
     { "id": 2, "employee_id": "EMP102", "name": "Arjun Rao", "job_title": "Engineering Manager", "department": "Engineering", "reports_count": 1 },
     { "id": 1, "employee_id": "EMP101", "name": "Priya Sharma", "job_title": "Engineer", "department": "Engineering", "reports_count": 0 }
   ]
+}
+```
+
+### GET `/api/v1/reports/trends`
+
+HR or managers (others `403`). Query: `months` (1–24, default 12). Monthly series ending with the
+current month for the dashboard charts, scoped like the other reports (managers: their subtree).
+`headcount` is the number of active employees who started on or before each month's end (derived from
+start dates until leavers exist in S18); `joiners` counts active employees by start month;
+`leave_days` counts leave records per type; `payroll_totals` sums generated and paid runs per currency
+(never converted) and is `null` for managers.
+
+```json
+{
+  "data": {
+    "months": ["2026-09", "2026-10", "2026-11"],
+    "headcount": [1, 2, 3],
+    "joiners": [0, 1, 1],
+    "leave_days": [{ "leave_type": "Earned", "values": [0, 1, 1] }],
+    "payroll_totals": [{ "currency": "INR", "values": ["0.00", "90000.00", "0.00"] }]
+  }
 }
 ```

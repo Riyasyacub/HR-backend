@@ -23,9 +23,9 @@ RSpec.describe "Report exports", type: :request do
     rows = export("headcount", { group_by: "department", country: "India" })
 
     expect(response.headers["Content-Disposition"]).to match(/filename="headcount-\d{4}-\d{2}-\d{2}\.xlsx"/)
-    expect(rows.first).to eq([ "Department", "Headcount", "Onboarding" ])
-    expect(rows[1..-2]).to eq(screen["data"].map(&:values))
-    expect(rows.last).to eq([ "Total", 2, 1 ])
+    expect(rows.first).to eq([ "Department", "Headcount" ])
+    expect(rows[1..-2]).to eq(screen["data"].map { _1.values_at("group", "headcount") })
+    expect(rows.last).to eq([ "Total", 2 ])
   end
 
   it "exports every filtered joiner, not just the first page" do

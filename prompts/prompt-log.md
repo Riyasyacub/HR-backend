@@ -1513,3 +1513,95 @@ Notes: Chunk S11a-6 (frontend). OrgChartPage split into a page shell and an OrgT
 > commit
 
 Notes: S11a signed off (smoke pack deferred to the end). CLAUDE.md and AGENTS.md current state: S11a complete, S12 next. Committed S11a in both repos (CLAUDE.md stays untracked).
+
+### Frontend design revamp
+
+> the FE looks plain, find a good design and revamp it
+
+Notes: Reviewed the UI (14 pages, only Button/Input, no app shell, Geist installed but unused). User chose: sidebar app shell, clean neutral + indigo, light only. Planned as frontend-only story S11b (UI revamp, no behaviour or API change) in 6 chunks. Chunk S11b-1: shadcn add sidebar, card, table, badge, dropdown-menu, separator (plus sheet, skeleton, tooltip, use-mobile); the CLI again wrote to a literal @/ folder, so the new files were moved into src and the identical button/input copies dropped; root tsconfig.json gains the @/* path so the CLI resolves it next time. Theme: Geist font, slate-50 background, slate foreground, indigo-600 primary, indigo accent and ring, white sidebar. use-mobile rewritten with useSyncExternalStore (lint warning). Configuration only: smoke check Vitest 159 passed, typecheck and lint clean, build ok.
+
+### Continue S11b-2
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11b-2 (frontend). New src/components/AppShell.tsx (shadcn Sidebar: role-filtered People/Leave/Payroll/Data/Insights/Admin groups, active link, footer with initials, name and Sign out, top bar with SidebarTrigger); RequireAuth renders the shell around every signed-in page; DashboardPage loses its link lists and Sign out button; matchMedia stub in src/test/setup.ts. Tests: AppShell (5); existing App routing and sign-out tests pass through the shell. Red confirmed. Vitest 164 passed, typecheck and lint clean, build ok. Production lines about 60 (over the limit).
+
+### Continue S11b-3
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11b-3 (frontend). DashboardPage: role heading, Welcome back <first name>, tiles, quick actions. DashboardTiles restyled as large-number cards (still links). New src/components/QuickActions.tsx (HR: import, leave upload, payroll, reports; manager: org chart, team, reports; employee: leave, own profile). Tests: QuickActions (3), App greeting (1). Red confirmed. Vitest 167 passed, typecheck and lint clean, build ok. Production lines about 40.
+
+### Dashboard and settings feedback, trend graphs
+
+> 1. Remove the onboarding tile in dashboard and in reports (group by manager)
+> 2. settings page designs seems off, fix it
+> 3. try to add some trend graphs in dashboard
+
+Notes: Chunk S11b-3a. 1: removed the Onboarding dashboard tile and the Onboarding column/total from the headcount report screen; headcount XLSX export drops the Onboarding column to stay equal to the screen (JSON keeps onboarding); docs/api.md. 2: SettingsPage rebuilt as cards (Countries table; Departments add form, table with status badge and actions; Leave types table with entitlement inputs); department code shown as its own cell (two App test assertions changed from "(ENG)" to the code cell). Tests updated first (red: 3 frontend, 1 backend). Vitest 167 passed, typecheck/lint clean, build ok; RSpec 388/0, RuboCop clean. Production lines about 60 (mostly settings markup). 3: trend graphs need a decision (data, chart library, endpoint); asked.
+
+## 2026-10-28
+
+### Plan the NL-to-SQL assistant
+
+> I am planning to build a chatbot. The chatbot should be targeted at an AI, which means the user will give a prompt in text and the AI bot will generate SQL. It should be an NL-to-SQL bot so it will convert the user prompt to SQL and the SQL will be executed in the database. The result will be shown to the user. That's the basic idea.
+>
+> Here there should be authorization things too because some of the users don't have access to some other users. Authorization should be a key part here. All restrictions and validations should be there. Try to build a robust thing and it should be cost effective too. It should be minimal and minimizable in cost, like using a caching mechanism or something like that.
+>
+> for the AI model. make it configurable. I will be using Openrouter models for now. Use template pattern here, so that i can switch to different provider in future.
+
+Notes: Planning only (plan mode). Decisions: all roles scoped by existing Pundit scopes; pg_query gem approved for AST validation; new story S11c after S11b and before S12; generated SQL never shown to users (audit only). Plan approved: scoped CTE virtual relations, allowlist validation, read-only/timeout/limit sandbox, template-pattern LLM provider with OpenRouter, SQL/result caching, rate limit and token budget, audit table, Assistant page; 9 chunks. Saved at ~/.claude/plans/i-am-planning-to-cheeky-wreath.md. No code changed. S11b trend-graph question still open.
+
+### Trend graph decisions
+
+> 1 all four, 2 A, 3 yes
+
+Notes: Trends: headcount (from start dates), joiners per month, leave days per month by type, payroll per currency (HR only); shadcn chart (recharts) approved; GET /api/v1/reports/trends?months=12. Chunk S11b-4: Reports::Trends (app/queries/reports/trends.rb; active employees in policy scope; headcount as running total of grouped joiners plus count before the window; leave days grouped by month and type; payroll totals per currency from generated/paid runs for HR only), ReportsController#trends (months 1-24), ReportPolicy#trends?, route, docs/api.md. Specs: spec/requests/api/v1/reports/trends_spec.rb (6, incl. constant query count). Red confirmed (5 failing). RSpec 394/0, RuboCop clean, Brakeman 0. Production lines about 45.
+
+### Continue S11b-5
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11b-5 (frontend). Loaded the dataviz skill; validated the categorical palette (#2a78d6, #eb6834, #1baf7a, #eda100): all checks pass, contrast WARN on two colours handled with a legend, tooltips and a Reports table link. shadcn add chart (recharts ^3.8.0, landed in src thanks to the root tsconfig alias). getTrends in src/api/reports.ts; new src/components/DashboardTrends.tsx (headcount line, joiners bars, stacked leave bars with fixed per-type colours and a legend list, payroll small multiples per currency for HR; single axis per chart), lazy-loaded on the dashboard for HR and managers (main bundle 468 kB, charts chunk 359 kB). ResizeObserver stub in test setup; App test reports mock gains getTrends. Tests: api (1), DashboardTrends (4). Red confirmed. Vitest 172 passed, typecheck and lint clean, build ok without size warning. Production lines about 70 (over the limit).
+
+### Does the leave trend include entitlements?
+
+> I have you have included entitilement too in the leave days query, entititelment is not the actual leave taken right? its leave given right?
+
+Notes: Question only. Confirmed leave_days counts leave_records (days taken) only, never ledger entitlements: development data has 7,519 leave records (Earned 3,002, Sick 2,257, Casual 1,537, Unpaid 723) and the trend's last-three-month totals add up to the same 7,519, while entitlements total 180,162 days and are not used. "Earned" is the earned-leave type, not an entitlement. No code changed.
+
+### Continue S11b-6
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11b-6 (frontend). New src/components/PageHeader.tsx (h1, description, actions) and src/components/StatusBadge.tsx (success/warning/danger/info/neutral tones with the status text; data-tone). EmployeesPage: PageHeader with Add employee, styled filters, shadcn Table, status badges. PayrollRunsPage: PageHeader, create form in a card, shadcn Table, run and calculation status badges. Tests: PageHeader/StatusBadge (10), EmployeesPage and PayrollRunsPage badge assertions. Red confirmed. Vitest 182 passed, typecheck and lint clean, build ok. Production lines about 60 (over the limit).
+
+### Continue S11b-7
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11b-7 (frontend). StatusBadge gains an optional tone override. LeaveRecordsPage: PageHeader, styled date filter, shadcn Table, payroll deduction as a warning badge. TeamPage: PageHeader (Back to dashboard link removed, sidebar covers it), shadcn Table with status badges. Report tabs moved to S11b-8. Tests: LeaveRecordsPage and TeamPage assertions for badges and table rows. Red confirmed (2 failing). Vitest 182 passed, typecheck and lint clean, build ok. Production lines about 45.
+
+### Continue S11b-8
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11b-8 (frontend). ReportsPage: PageHeader and a segmented tablist (role tab, aria-selected) replacing outline buttons. Headcount, Joiners, Leave and Payroll report tabs, PayrollLinesTable and the payroll run totals table converted to shadcn Table in a carded container (scripted markup swap, reviewed; no leftover raw table markup). Tests: ReportsPage tab queries moved to role tab plus aria-selected checks; all other table tests unchanged. Red confirmed (2 failing). Vitest 182 passed, typecheck and lint clean, build ok. Production lines about 75 changed, mostly mechanical markup swaps (over the limit).
+
+### Continue S11b-9
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11b-9 (frontend). EmployeeProfilePage: header with initials avatar, name, status badge, job title and department, View in org chart as an outline button; sections as cards in a two-column grid; styled inputs. LeaveBalances and LeaveHistory cards restyled. NewEmployeePage: PageHeader, form on a card, styled selects. Payroll run, uploads and sign-in moved to S11b-10. Tests: profile header status badge assertion. Red confirmed (1 failing). Vitest 182 passed, typecheck and lint clean, build ok. Production lines about 35.
+
+### Continue S11b-10
+
+> approved, continue to the next chunk
+
+Notes: Chunk S11b-10 (frontend). SignInPage: brand line, subtitle, soft indigo gradient background, larger card. PayrollRunPage: PageHeader with month title, status line as description and Recalculate action; actions on a card. LeaveUploadPage and EmployeeImportPage: PageHeader with description, controls grouped on a card, result summary card. Joiners report link styled like other name links. No old-style markup left in src. Tests: sign-in brand and subtitle (App test). Red confirmed (1 failing). Vitest 182 passed, typecheck and lint clean, build ok; RSpec 394/0. Production lines about 35.
+
+### S11b sign-off and start S11c
+
+> approved, continue to the next chunk
+
+Notes: In progress. S11b signed off and committed; starting S11c-1.

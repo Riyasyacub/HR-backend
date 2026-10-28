@@ -3,4 +3,5 @@ class ReportPolicy < ApplicationPolicy
   def joiners? = headcount?
   def leave? = headcount?
   def payroll? = hr?
+  def trends? = headcount?
 end

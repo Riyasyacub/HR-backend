@@ -566,6 +566,26 @@ As an HR user or manager, I want to explore the reporting hierarchy as a collaps
 
 ---
 
+## S11b — UI revamp
+
+| | |
+|---|---|
+| Epic | Demo readiness |
+| Priority | P1 |
+| Depends on | S11a |
+| Covers | Frontend look and navigation; dashboard trends (RPT-08, RPT-09 partial) |
+
+**Story**
+As any user, I want a consistent, modern interface with clear navigation and an informative dashboard, so that the product is pleasant to demo and use.
+
+**Scope (agreed 2026-10-27/28)**
+- shadcn sidebar app shell with role-filtered sections; indigo theme on Geist; light mode only.
+- Dashboard: greeting, stat cards (onboarding tile removed), quick actions by role, and trend charts (headcount derived from start dates, joiners, leave days by type, payroll per currency for HR) from `GET /api/v1/reports/trends`, drawn with the shadcn chart component (Recharts).
+- Every list and detail page on the shared page header, cards, tables, and status badges; Settings redesigned; onboarding removed from the headcount report screen and export.
+- No behaviour change apart from the trends endpoint and the headcount export columns.
+
+---
+
 ## S12 — Candidate registration, login, and profile
 
 | | |
